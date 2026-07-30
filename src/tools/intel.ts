@@ -1,0 +1,202 @@
+import { defineTool } from '@flue/runtime';
+import * as v from 'valibot';
+import { intelFixture } from '../fixtures/index.ts';
+import { useFixtures } from '../lib/config.ts';
+import { cfFetch } from '../lib/cf-client.ts';
+import { asJson } from '../lib/json.ts';
+
+/**
+ * Cloudflare Intelligence (Security Center) indicator enrichment.
+ *
+ * This is Cloudflare's synchronous IOC-reputation API — "is this indicator
+ * generically bad?" — via /intel/ip and /intel/domain. It is distinct from
+ * Cloudforce One (see ./cloudforce-one.ts), which provides curated, attributed
+ * threat events. This tool is always available; Cloudforce One is optional.
+ */
+
+// Strict IPv4 (rejects 999.999.999.999). IPv6 is detected by structure and
+// routed to the ipv6 query param.
+const IPV4_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+const IPV6_RE = /^(?=.*:)[0-9a-f:]+$/i;
+// A minimal domain shape: labels separated by dots, no scheme, no spaces.
+const DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/i;
+
+// Categories that indicate a malicious domain.
+const THREAT_CATEGORY_KEYWORDS = [
+  'malware',
+  'phishing',
+  'command and control',
+  'spam',
+  'botnet',
+  'cryptomining',
+  'spyware',
+];
+
+type IndicatorKind = 'ipv4' | 'ipv6' | 'domain' | 'unknown';
+
+export function classify(indicator: string): IndicatorKind {
+  if (IPV4_RE.test(indicator)) return 'ipv4';
+  if (IPV6_RE.test(indicator)) return 'ipv6';
+  if (DOMAIN_RE.test(indicator)) return 'domain';
+  return 'unknown';
+}
+
+// ---------------------------------------------------------------------------
+// Raw API response types
+// ---------------------------------------------------------------------------
+
+interface DomainIntelResult {
+  domain: string;
+  resolves_to_refs?: Array<{ id: string; value: string }>;
+  application?: Record<string, unknown>;
+  content_categories?: Array<{ id: number; name: string; super_category_id?: number }>;
+  risk_score?: number;
+  notes?: string;
+}
+
+interface IPIntelResult {
+  ip: string;
+  belongs_to_ref?: {
+    id: string;
+    value: number;
+    type: string;
+    country: string;
+    description: string;
+  };
+  ip_lists?: string[] | null;
+  ptr_lookup?: { ptr_domains: string[]; ptr_lookup_errors: string };
+}
+
+// ---------------------------------------------------------------------------
+// Normalized output shape
+// ---------------------------------------------------------------------------
+
+/**
+ * enriched      — the lookup succeeded; is_threat reflects the verdict.
+ * lookup_failed — the lookup errored or the indicator was unrecognizable.
+ *                 is_threat is false but MUST NOT be read as "clean" — the
+ *                 indicator simply could not be evaluated. Never silently
+ *                 dropped, so an analyst can see the gap.
+ */
+export type IntelStatus = 'enriched' | 'lookup_failed';
+
+export type IntelEntry = {
+  indicator: string;
+  kind: 'ip' | 'domain' | 'unknown';
+  status: IntelStatus;
+  is_threat: boolean;
+  error?: string;
+  // IP fields
+  asn?: { number: number; description: string; country: string; type: string };
+  ip_lists?: string[] | null;
+  ptr_domains?: string[];
+  // Domain fields
+  content_categories?: string[];
+  application?: string | null;
+  resolves_to?: string[];
+  risk_score?: number;
+  // Both
+  notes?: string;
+};
+
+function failed(indicator: string, kind: IntelEntry['kind'], error: string): IntelEntry {
+  return { indicator, kind, status: 'lookup_failed', is_threat: false, error };
+}
+
+async function enrichIP(indicator: string, kind: IndicatorKind): Promise<IntelEntry> {
+  // NOTE: v6 uses the ipv6 query param; confirm against your Intel API access.
+  const param = kind === 'ipv6' ? 'ipv6' : 'ipv4';
+  const raw = await cfFetch<IPIntelResult[]>(`/intel/ip?${param}=${encodeURIComponent(indicator)}`);
+  const entry = raw.find((r) => r.ip === indicator) ?? raw[0];
+  if (!entry) return failed(indicator, 'ip', 'no intel record returned for indicator');
+  return {
+    indicator,
+    kind: 'ip',
+    status: 'enriched',
+    is_threat: Array.isArray(entry.ip_lists) && entry.ip_lists.length > 0,
+    asn: entry.belongs_to_ref
+      ? {
+          number: entry.belongs_to_ref.value,
+          description: entry.belongs_to_ref.description,
+          country: entry.belongs_to_ref.country,
+          type: entry.belongs_to_ref.type,
+        }
+      : undefined,
+    ip_lists: entry.ip_lists,
+    ptr_domains: entry.ptr_lookup?.ptr_domains,
+  };
+}
+
+async function enrichDomain(indicator: string): Promise<IntelEntry> {
+  const raw = await cfFetch<DomainIntelResult>(`/intel/domain?domain=${encodeURIComponent(indicator)}`);
+  const categoryNames = raw.content_categories?.map((c) => c.name) ?? [];
+  const is_threat = categoryNames.some((name) =>
+    THREAT_CATEGORY_KEYWORDS.some((kw) => name.toLowerCase().includes(kw)),
+  );
+  const appName =
+    raw.application && Object.keys(raw.application).length > 0
+      ? JSON.stringify(raw.application)
+      : null;
+  return {
+    indicator,
+    kind: 'domain',
+    status: 'enriched',
+    is_threat,
+    content_categories: categoryNames,
+    application: appName,
+    resolves_to: raw.resolves_to_refs?.map((r) => r.value),
+    risk_score: raw.risk_score,
+    notes: raw.notes,
+  };
+}
+
+async function enrichOne(indicator: string): Promise<IntelEntry> {
+  const kind = classify(indicator);
+  if (kind === 'unknown') {
+    return failed(indicator, 'unknown', 'unrecognized indicator format (not an IP or domain)');
+  }
+  try {
+    return kind === 'domain' ? await enrichDomain(indicator) : await enrichIP(indicator, kind);
+  } catch (err) {
+    // Distinguish "could not evaluate" from "evaluated and clean" — critical
+    // for a security tool. The failure is reported, never silently dropped.
+    const message = err instanceof Error ? err.message : String(err);
+    return failed(indicator, kind === 'domain' ? 'domain' : 'ip', message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tool
+// ---------------------------------------------------------------------------
+
+export const getIndicatorIntel = defineTool({
+  name: 'get_indicator_intel',
+  description:
+    'Enrich IP addresses and domains with Cloudflare Intelligence (Security Center) reputation data. ' +
+    'Calls /intel/ip (ASN info + ip_lists membership — non-empty ip_lists means known malicious, e.g. Tor/Spamhaus) ' +
+    'and /intel/domain (content_categories, resolved IPs, risk_score). ' +
+    'Every indicator is returned with status "enriched" or "lookup_failed"; a lookup_failed entry means the ' +
+    'indicator could NOT be evaluated and must not be treated as clean.',
+  input: v.object({
+    indicators: v.pipe(
+      v.array(v.string()),
+      v.description('IP addresses and/or domain names to enrich'),
+    ),
+  }),
+  async run({ data }) {
+    if (useFixtures()) {
+      const results: Record<string, IntelEntry> = {};
+      for (const indicator of data.indicators) {
+        results[indicator] =
+          intelFixture[indicator] ??
+          failed(indicator, classify(indicator) === 'domain' ? 'domain' : 'ip', 'no fixture entry');
+      }
+      return asJson(results);
+    }
+
+    const entries = await Promise.all(data.indicators.map(enrichOne));
+    const results: Record<string, IntelEntry> = {};
+    for (const entry of entries) results[entry.indicator] = entry;
+    return asJson(results);
+  },
+});

@@ -1,0 +1,143 @@
+/**
+ * Shared Cloudflare API client.
+ *
+ * Credentials are resolved and validated in `./config.ts` — never read or
+ * hardcoded here. All outbound calls go through `./http.ts` so they inherit a
+ * hard timeout, and read-only calls additionally get one bounded retry.
+ */
+
+import {
+  getCloudflareApiConfig,
+  getLogsConfig,
+  type LogDataset,
+} from './config.ts';
+import { fetchWithRetry, fetchWithTimeout } from './http.ts';
+
+const CF_API_BASE = 'https://api.cloudflare.com/client/v4';
+
+// ---------------------------------------------------------------------------
+// Error types
+// ---------------------------------------------------------------------------
+
+export class CloudflareAPIError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly endpoint: string,
+    message: string,
+  ) {
+    super(`Cloudflare API ${status} on ${endpoint}: ${message}`);
+    this.name = 'CloudflareAPIError';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function parseV4Response<T>(res: Response, endpoint: string): Promise<T> {
+  if (!res.ok) {
+    const body = await res.text().catch(() => '(unreadable)');
+    throw new CloudflareAPIError(res.status, endpoint, body);
+  }
+  const json = (await res.json()) as {
+    success: boolean;
+    result: T;
+    errors?: Array<{ message: string }>;
+  };
+  if (!json.success) {
+    const msg = json.errors?.map((e) => e.message).join('; ') ?? 'unknown error';
+    throw new CloudflareAPIError(res.status, endpoint, msg);
+  }
+  return json.result;
+}
+
+// ---------------------------------------------------------------------------
+// REST API — standard /accounts/{id}/... endpoints (read-only: retried)
+// ---------------------------------------------------------------------------
+
+export async function cfFetch<T = unknown>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const { apiToken, accountId } = getCloudflareApiConfig();
+  const url = `${CF_API_BASE}/accounts/${accountId}${path}`;
+  const res = await fetchWithRetry(() =>
+    fetchWithTimeout(url, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+        ...(init.headers ?? {}),
+      },
+    }),
+  );
+  return parseV4Response<T>(res, path);
+}
+
+/**
+ * Like cfFetch, but authenticated with an explicit token — used by Cloudforce
+ * One, which carries its own (optional) API token distinct from CF_API_TOKEN.
+ */
+export async function cfFetchWithToken<T = unknown>(
+  accountId: string,
+  apiToken: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const url = `${CF_API_BASE}/accounts/${accountId}${path}`;
+  const res = await fetchWithRetry(() =>
+    fetchWithTimeout(url, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+        ...(init.headers ?? {}),
+      },
+    }),
+  );
+  return parseV4Response<T>(res, path);
+}
+
+// ---------------------------------------------------------------------------
+// Logs Engine — streams NDJSON from R2 and returns parsed records
+// Docs: https://developers.cloudflare.com/logs/r2-log-retrieval/
+// ---------------------------------------------------------------------------
+
+export async function logsRetrieve<T = Record<string, unknown>>(
+  start: string,
+  end: string,
+  dataset: LogDataset,
+): Promise<T[]> {
+  const cfg = getLogsConfig();
+  const prefix = cfg.prefixFor(dataset);
+
+  const params = new URLSearchParams({
+    start,
+    end,
+    bucket: cfg.bucket,
+    prefix,
+  });
+  const endpoint = `/logs/retrieve?${params}`;
+  const url = `${CF_API_BASE}/accounts/${cfg.accountId}${endpoint}`;
+
+  const res = await fetchWithRetry(() =>
+    fetchWithTimeout(url, {
+      headers: {
+        Authorization: `Bearer ${cfg.apiToken}`,
+        'R2-Access-Key-Id': cfg.r2AccessKeyId,
+        'R2-Secret-Access-Key': cfg.r2SecretAccessKey,
+      },
+    }),
+  );
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '(unreadable)');
+    throw new CloudflareAPIError(res.status, endpoint, body);
+  }
+
+  const ndjson = await res.text();
+  return ndjson
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as T);
+}

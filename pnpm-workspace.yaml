@@ -1,0 +1,10 @@
+# pnpm 11 reads build-script settings from here (not package.json).
+# Explicit allowlist for postinstall build scripts. esbuild + workerd are
+# required for dev/test/build; the transitive scripts are denied (least
+# privilege — this is a Zero Trust security demo).
+allowBuilds:
+  esbuild: true
+  workerd: true
+  '@google/genai': false
+  core-js-pure: false
+  protobufjs: false
