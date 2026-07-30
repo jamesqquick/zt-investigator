@@ -1,0 +1,19 @@
+.gitignore
+  s_f16dc25817ba2f::t_4a6fb7d320df2f 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7e6afb8242fa2817cff8f9108e589b2ef8a8fecf",
+  "prompts": {},
+  "sessions": {
+    "s_f16dc25817ba2f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_04ba2e8d0ffe40b7HqVgoFhE6q",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
