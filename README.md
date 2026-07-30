@@ -121,7 +121,7 @@ are checked into the repo under [`src/fixtures/`](src/fixtures/), so
 
 ```bash
 pnpm install
-cp .env.example .env          # USE_FIXTURES=true is the default
+cp .env.example .env          # FIXTURE_MODE=true is the default
 # set OPENAI_API_KEY in .env (the model still runs locally)
 pnpm run agent -- "investigate alice@corp.com"
 ```
@@ -130,10 +130,13 @@ The triage report prints to the run output.
 
 ## Live mode (real Cloudflare data)
 
-Set `USE_FIXTURES=false` and provide the Cloudflare credentials below. The data
-tools then call the real Logs Engine, Zero Trust devices, and Intel APIs. A
-single `CF_API_TOKEN` with **Account Intel Read, Zero Trust Read, and Logs Read
-+ Edit** covers the baseline flow (Cloudforce One uses its own optional token).
+Live mode is the default — leave `FIXTURE_MODE` unset and provide the Cloudflare
+credentials below. The Intel, Zero Trust devices, and Cloudforce One tools then
+call the real APIs through the official [`cloudflare`](https://www.npmjs.com/package/cloudflare)
+SDK, while the Logs Engine (`/logs/retrieve`, not covered by the SDK) is queried
+directly. A single `CF_API_TOKEN` with **Account Intel Read, Zero Trust Read, and
+Logs Read + Edit** covers the baseline flow (Cloudforce One uses its own optional
+token).
 
 > **Logs token scope:** the Logs Engine `/logs/retrieve` endpoint documents
 > token auth as requiring **Logs Edit** (Logpull), even though retrieval is a
@@ -141,7 +144,7 @@ single `CF_API_TOKEN` with **Account Intel Read, Zero Trust Read, and Logs Read
 > with Logshare read. Confirm the exact scope against your account.
 
 ```bash
-USE_FIXTURES=false pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent -- "investigate alice@corp.com"
 ```
 
 ## Deploy to Cloudflare Workers
@@ -168,7 +171,7 @@ deep in an API call.
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `USE_FIXTURES` | – | `true` uses local fixtures (no credentials). Default in `.env.example`. |
+| `FIXTURE_MODE` | – | `true` runs fully offline against local fixtures (no credentials). Set in `.env.example`; leave unset for live mode. |
 | `MODEL` | – | `provider/model`. Default `openai/gpt-4o`. |
 | `OPENAI_API_KEY` | local only | Needed when `MODEL=openai/gpt-4o`. |
 | `CF_API_TOKEN` | live | Account Intel Read, Zero Trust Read, Logs Read + Edit (see note above). |
@@ -196,15 +199,16 @@ Tests (`test/`) run in a plain node environment via `vitest.config.ts` (kept
 separate from `vite.config.ts` so the Worker/Flue plugins don't load under the
 test runner). They cover config validation, indicator classification, the
 `lookup_failed` contract, Cloudforce One gating, record filtering, report
-formatting, and PII redaction.
+formatting, PII redaction, the isolated Logs Engine client, and the offline
+fixture-mode wiring.
 
 ## Notes to verify against a live account
 
-A few API contracts are marked `[verify]` in the code and should be confirmed
-against your own Cloudflare account before relying on live mode:
+A few API contracts should be confirmed against your own Cloudflare account
+before relying on live mode:
 
 - Logs Engine object-prefix `{DATE}` partitioning (must match your Logpush jobs).
-- Cloudforce One `search` GET encoding and `datasetId=all` semantics.
+- Cloudforce One `datasetId` values and `all` semantics for your subscription.
 - The Intel API IPv6 query-parameter name (`ipv6`).
 
 ## Security

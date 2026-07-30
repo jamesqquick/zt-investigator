@@ -6,3 +6,6 @@ dist/
 .flue-vite/
 .flue-vite.wrangler.jsonc
 .wrangler/
+
+# Local readiness checklist — not for check-in
+docs/READINESS.md
