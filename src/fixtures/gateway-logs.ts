@@ -1,13 +1,3 @@
-/**
- * Fixtures: Gateway DNS and HTTP logs in real Logpush record shape (PascalCase).
- *
- * DNS docs:  https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/gateway_dns/
- * HTTP docs: https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/gateway_http/
- *
- * Narrative: C2 domain query 4 minutes before the Access events,
- * followed immediately by a blocked Pastebin request.
- * DeviceID links these records to the device lookup.
- */
 import type { GatewayDNSRecord, GatewayHTTPRecord } from '../tools/gateway-logs.ts';
 
 export const gatewayDNSLogsFixture: {

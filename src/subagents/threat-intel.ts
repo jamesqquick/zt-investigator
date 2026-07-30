@@ -4,9 +4,7 @@ import { getIndicatorIntel } from '../tools/intel.ts';
 import { getCloudforceOneEvents } from '../tools/cloudforce-one.ts';
 
 function ThreatIntelAgent() {
-  // Baseline reputation (always available).
   useTool(getIndicatorIntel);
-  // Attributed threat events (optional — only when Cloudforce One is configured).
   if (cloudforceOneEnabled()) useTool(getCloudforceOneEvents);
 
   const lines = [

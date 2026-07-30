@@ -8,9 +8,8 @@ function cleanMention(text: string): string {
   return text.replace(/<@[^>]+>/g, '').trim();
 }
 
-// Resolved once at module init. When SLACK_SIGNING_SECRET is unset this is an
-// empty string, which makes request verification fail closed (reject) rather
-// than silently trusting unverified webhooks.
+// An empty signingSecret (SLACK_SIGNING_SECRET unset) makes verification fail
+// closed — rejecting rather than trusting unverified webhooks.
 export const channel = createSlackChannel({
   signingSecret: getSlackConfig().signingSecret,
   async events({ payload }) {
@@ -24,16 +23,13 @@ export const channel = createSlackChannel({
       threadTs: event.thread_ts ?? event.ts,
     };
 
-    // Channel deliveries are signals, not user messages: a Slack thread is a
-    // multi-participant surface the agent joins as one member, so the event is
-    // carried with its metadata intact rather than presenting every sender as
-    // the agent's own user. `attributes` are set by this verified webhook code,
-    // so tools/instructions can trust them (see useDelivery in the agent).
+    // Carried as a signal (not a user message) so the multi-participant thread
+    // keeps its metadata. `attributes` are set here in verified webhook code, so
+    // tools/instructions can trust them (see useDelivery in the agent).
     const attributes: Record<string, string> = { eventId: payload.event_id };
     if (event.user) attributes.requestedBy = event.user;
 
-    // One agent instance per Slack thread; seed the thread so the report
-    // tool can post its findings back to the same thread.
+    // One agent instance per Slack thread, seeded so the report tool can post back.
     await dispatch(ZeroTrustInvestigator, {
       id: channel.instanceId(thread),
       initialData: thread,

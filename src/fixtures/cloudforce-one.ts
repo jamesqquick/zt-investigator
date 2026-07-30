@@ -1,15 +1,5 @@
 import type { CloudforceOneEntry } from '../tools/cloudforce-one.ts';
 
-/**
- * Fixture: Cloudforce One attributed threat events in the normalized shape
- * returned by get_cloudforce_one_events.
- *
- * The C2 domain matches a named-actor event (MITRE mapping + analyst insight);
- * the Tor IP has no attributed event (a realistic no_match — generic reputation
- * is still flagged by the Intel layer). This shows the two sources are
- * complementary: reputation says "known-bad infra", Cloudforce One says
- * "attributed to a tracked campaign".
- */
 export const cloudforceOneFixture: Record<string, CloudforceOneEntry> = {
   'malware-c2-domain.ru': {
     indicator: 'malware-c2-domain.ru',

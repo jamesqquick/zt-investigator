@@ -1,10 +1,5 @@
-/**
- * Fixture: device details from GET /devices/physical-devices/{device_id}.
- * Docs: https://developers.cloudflare.com/api/resources/zero_trust/subresources/devices/
- *
- * NOTE: Cloudflare does not expose per-check posture pass/fail results via API.
- * The triage skill reasons about OS version, device type, and last_seen_at instead.
- */
+// NOTE: Cloudflare does not expose per-check posture pass/fail via API; the triage
+// skill reasons about OS version, device type, and last_seen_at instead.
 import type { PhysicalDevice } from '../tools/device-posture.ts';
 
 export const devicePostureFixture: { result: PhysicalDevice; success: boolean } = {

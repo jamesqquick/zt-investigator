@@ -18,17 +18,12 @@ const reportInput = v.object({
 type Report = v.InferOutput<typeof reportInput>;
 
 const RISK_EMOJI: Record<Report['riskLevel'], string> = {
-  low: '\u{1F7E2}',      // green
-  medium: '\u{1F7E1}',   // yellow
-  high: '\u{1F7E0}',     // orange
-  critical: '\u{1F534}', // red
+  low: '\u{1F7E2}',
+  medium: '\u{1F7E1}',
+  high: '\u{1F7E0}',
+  critical: '\u{1F534}',
 };
 
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
-
-/** Plain-text render — used as the Slack notification fallback and for run output. */
 export function formatReport(r: Report): string {
   const bullets = (items: string[]) =>
     items.length ? items.map((i) => `  \u2022 ${i}`).join('\n') : '  (none)';
@@ -50,12 +45,10 @@ export function formatReport(r: Report): string {
   ].join('\n');
 }
 
-/** Escape Slack mrkdwn control characters in interpolated content. */
 function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Slack Block Kit render — a structured, readable report card. */
 export function buildBlocks(r: Report): unknown[] {
   const bullets = (items: string[]) =>
     items.length ? items.map((i) => `\u2022 ${esc(i)}`).join('\n') : '_(none)_';
@@ -89,10 +82,6 @@ export function buildBlocks(r: Report): unknown[] {
   ];
 }
 
-// ---------------------------------------------------------------------------
-// Slack delivery
-// ---------------------------------------------------------------------------
-
 type PostResult = { ok: true } | { ok: false; error: string };
 
 async function postToSlack(dest: SlackThreadRef, r: Report): Promise<PostResult> {
@@ -110,7 +99,7 @@ async function postToSlack(dest: SlackThreadRef, r: Report): Promise<PostResult>
       body: JSON.stringify({
         channel: dest.channelId,
         thread_ts: dest.threadTs,
-        text: formatReport(r), // notification fallback + accessibility
+        text: formatReport(r), // notification fallback + accessibility for the blocks
         blocks: buildBlocks(r),
       }),
     });
@@ -124,17 +113,9 @@ async function postToSlack(dest: SlackThreadRef, r: Report): Promise<PostResult>
   return { ok: false, error: body.error ?? 'unknown Slack API error' };
 }
 
-/**
- * Build the triage-report tool. When `dest` (a Slack thread) is provided —
- * i.e. the investigation was triggered from Slack — the report is posted back
- * to that thread. Otherwise (e.g. a local `flue run`) it is rendered to the
- * run output so the investigate -> score -> report loop still completes.
- *
- * Delivery is never silently downgraded: if the investigation came from Slack
- * but posting fails, the tool returns `delivered: 'failed'` with the error so
- * the agent (and the analyst) know the report did not reach the thread. The
- * report is still written to run output as a last-resort fallback.
- */
+// Posts to `dest` (the originating Slack thread) when the investigation came
+// from Slack, otherwise renders to run output. Delivery is never silently
+// downgraded: a Slack post that fails returns delivered: 'failed' with the error.
 export function createTriageReportTool(dest?: SlackThreadRef) {
   return defineTool({
     name: 'post_triage_report',
@@ -143,10 +124,9 @@ export function createTriageReportTool(dest?: SlackThreadRef) {
       'output when there is no Slack thread. Returns delivered: "slack" | "run-output" | "failed"; ' +
       'a "failed" result means the report could NOT be delivered to Slack and includes the error.',
     input: reportInput,
-    // Posting to Slack is an external side effect. If the Worker is interrupted
-    // after Slack accepts the message but before the tool result is recorded,
-    // recovery replays the recorded step result instead of re-posting — so the
-    // report is never double-delivered to the thread.
+    // durable: on interruption after Slack accepts but before the result is
+    // recorded, recovery replays the recorded step instead of re-posting, so the
+    // report is never double-delivered.
     durable: true,
     async run({ data, step, log }) {
       if (dest) {
@@ -154,8 +134,7 @@ export function createTriageReportTool(dest?: SlackThreadRef) {
         if (result.ok) {
           return asJson({ delivered: 'slack', riskLevel: data.riskLevel });
         }
-        // Surface the failure through observability instead of pretending the
-        // report was delivered. The full report rides back on the result so it
+        // Surface the failure; the full report rides back on the result so it
         // is not lost when Slack delivery fails.
         log.warn('Slack delivery failed; falling back to run output', {
           error: result.error,

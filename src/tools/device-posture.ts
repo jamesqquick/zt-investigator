@@ -1,18 +1,13 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
-import { devicePostureFixture } from '../fixtures/index.ts';
-import { useFixtures } from '../lib/config.ts';
-import { cfFetch } from '../lib/cf-client.ts';
+import { getCloudflareApiConfig } from '../lib/config.ts';
+import { getCloudflareClient } from '../lib/cf-client.ts';
 import { asJson } from '../lib/json.ts';
 
-/**
- * Real device shape from GET /accounts/{id}/devices/physical-devices/{device_id}.
- * Docs: https://developers.cloudflare.com/api/resources/zero_trust/subresources/devices/
- *
- * NOTE: Cloudflare does not expose per-check posture pass/fail results via API.
- * This tool returns device identity and OS metadata only.
- * Use DeviceID extracted from Gateway DNS/HTTP logs as input.
- */
+// Device shape from GET /accounts/{id}/devices/physical-devices/{device_id}.
+// https://developers.cloudflare.com/api/resources/zero_trust/subresources/devices/
+// NOTE: Cloudflare does not expose per-check posture pass/fail via API — this
+// returns device identity and OS metadata only. Input DeviceID comes from Gateway logs.
 export type PhysicalDevice = {
   id: string;
   name: string;
@@ -51,11 +46,11 @@ export const getDevicePosture = defineTool({
     ),
   }),
   async run({ data }) {
-    if (useFixtures()) return asJson(devicePostureFixture);
-
-    const device = await cfFetch<PhysicalDevice>(
-      `/devices/physical-devices/${encodeURIComponent(data.deviceId)}`,
-    );
+    const { accountId } = getCloudflareApiConfig();
+    // Physical-devices lookup lives on the nested `devices.devices` SDK resource.
+    const device = (await getCloudflareClient().zeroTrust.devices.devices.get(data.deviceId, {
+      account_id: accountId,
+    })) as PhysicalDevice;
 
     return asJson({
       result: device,

@@ -26,6 +26,7 @@
     "@flue/slack": "2.0.0-nightly.202607240825",
     "@flue/vite": "2.0.0-nightly.202607240825",
     "agents": "0.20.1",
+    "cloudflare": "^7.0.0",
     "hono": "4.12.32",
     "valibot": "1.4.2",
     "vite": "8.1.5"
