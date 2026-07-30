@@ -143,21 +143,36 @@ export function createTriageReportTool(dest?: SlackThreadRef) {
       'output when there is no Slack thread. Returns delivered: "slack" | "run-output" | "failed"; ' +
       'a "failed" result means the report could NOT be delivered to Slack and includes the error.',
     input: reportInput,
-    async run({ data }) {
+    // Posting to Slack is an external side effect. If the Worker is interrupted
+    // after Slack accepts the message but before the tool result is recorded,
+    // recovery replays the recorded step result instead of re-posting — so the
+    // report is never double-delivered to the thread.
+    durable: true,
+    async run({ data, step, log }) {
       if (dest) {
-        const result = await postToSlack(dest, data);
+        const result = await step.do('post-to-slack', () => postToSlack(dest, data));
         if (result.ok) {
           return asJson({ delivered: 'slack', riskLevel: data.riskLevel });
         }
-        // Surface the failure instead of pretending the report was delivered.
-        process.stderr.write(
-          `\n[slack delivery failed: ${result.error}] falling back to run output:\n${formatReport(data)}\n\n`,
-        );
-        return asJson({ delivered: 'failed', riskLevel: data.riskLevel, error: result.error });
+        // Surface the failure through observability instead of pretending the
+        // report was delivered. The full report rides back on the result so it
+        // is not lost when Slack delivery fails.
+        log.warn('Slack delivery failed; falling back to run output', {
+          error: result.error,
+          riskLevel: data.riskLevel,
+        });
+        return asJson({
+          delivered: 'failed',
+          riskLevel: data.riskLevel,
+          error: result.error,
+          report: formatReport(data),
+        });
       }
 
-      process.stderr.write(`\n${formatReport(data)}\n\n`);
-      return asJson({ delivered: 'run-output', riskLevel: data.riskLevel });
+      log.info('No Slack thread bound; triage report delivered to run output', {
+        riskLevel: data.riskLevel,
+      });
+      return asJson({ delivered: 'run-output', riskLevel: data.riskLevel, report: formatReport(data) });
     },
   });
 }

@@ -20,6 +20,7 @@
     "pnpm": ">=11"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "0.81.1",
     "@flue/cli": "2.0.0-nightly.202607240825",
     "@flue/runtime": "2.0.0-nightly.202607240825",
     "@flue/slack": "2.0.0-nightly.202607240825",

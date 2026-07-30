@@ -51,6 +51,16 @@ describe('buildBlocks', () => {
   });
 });
 
+// Minimal ToolContext stand-in for a durable tool: `step.do` runs the work
+// inline (no interruption), and `log` is a no-op sink.
+function runCtx(data: typeof report) {
+  return {
+    data,
+    step: { do: <T,>(_name: string, fn: () => T | Promise<T>) => Promise.resolve(fn()) },
+    log: { info() {}, warn() {}, error() {} },
+  } as never;
+}
+
 describe('createTriageReportTool delivery', () => {
   const SLACK_VARS = ['SLACK_BOT_TOKEN'];
   let saved: Record<string, string | undefined>;
@@ -70,7 +80,7 @@ describe('createTriageReportTool delivery', () => {
 
   test('no Slack thread -> delivered to run output', async () => {
     const tool = createTriageReportTool();
-    const result = (await tool.run({ data: report } as never)) as {
+    const result = (await tool.run(runCtx(report))) as {
       delivered: string;
       riskLevel: string;
     };
@@ -80,7 +90,7 @@ describe('createTriageReportTool delivery', () => {
 
   test('Slack thread but no bot token -> delivered:"failed" (never a false success)', async () => {
     const tool = createTriageReportTool({ channelId: 'C123', threadTs: '111.222' } as never);
-    const result = (await tool.run({ data: report } as never)) as {
+    const result = (await tool.run(runCtx(report))) as {
       delivered: string;
       error?: string;
     };

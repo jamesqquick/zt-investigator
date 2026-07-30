@@ -31,6 +31,10 @@ app.route('/agents/zero-trust-investigator', createAgentRouter(ZeroTrustInvestig
 // Slack ingress: mounts /channels/slack/events (+ /interactions, /commands when
 // configured). Point your Slack app's Event Subscriptions request URL here and
 // subscribe to the app_mention event.
+// Equivalent to `channel.route()` (both build the same mountable sub-router),
+// but routed through the runtime's createChannelRouter so the returned Hono is
+// typed against the app's hono version. @flue/slack bundles an older hono whose
+// route() return type trips app.route()'s parameter check under this dep set.
 app.route('/channels/slack', createChannelRouter(channel.routes));
 
 export default app;
