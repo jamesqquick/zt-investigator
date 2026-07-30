@@ -1,165 +1,74 @@
-/**
- * Shared Cloudflare API client.
- *
- * Credentials are resolved and validated in `./config.ts` — never read or
- * hardcoded here. All outbound calls go through `./http.ts` so they inherit a
- * hard timeout, and read-only calls additionally get one bounded retry.
- */
+import Cloudflare, { APIError } from 'cloudflare';
+import { getCloudflareApiConfig } from './config.ts';
+import { buildFixtureCloudflareClient } from '../fixtures/runtime.ts';
 
-import {
-  getCloudflareApiConfig,
-  getLogsConfig,
-  type LogDataset,
-} from './config.ts';
-import { fetchWithRetry, fetchWithTimeout } from './http.ts';
+let defaultClient: Cloudflare | undefined;
+let cloudforceOneClient: Cloudflare | undefined;
+let testClient: Cloudflare | undefined;
 
-const CF_API_BASE = 'https://api.cloudflare.com/client/v4';
+// FIXTURE_MODE (offline): supply placeholder creds at load so the tools' config
+// reads succeed. Read process.env DIRECTLY — calling an imported helper at
+// module-eval time is fragile under Vite SSR (`flue run`). The fake client is
+// built lazily on first use, when the module graph is fully initialized.
+const FIXTURE_MODE = process.env.FIXTURE_MODE === 'true';
+if (FIXTURE_MODE) {
+  process.env.CF_API_TOKEN ||= 'fixture';
+  process.env.CF_ACCOUNT_ID ||= 'fixture';
+  // Presence of this token is what enables the Cloudforce One enrichment step.
+  process.env.CLOUDFORCE_ONE_API_TOKEN ||= 'fixture';
+}
 
-// ---------------------------------------------------------------------------
-// Error types
-// ---------------------------------------------------------------------------
+/** Lazily build + memoize the offline fake, shared by both accessors. */
+function fixtureClient(): Cloudflare {
+  if (!testClient) testClient = buildFixtureCloudflareClient();
+  return testClient;
+}
 
-export class CloudflareAPIError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly endpoint: string,
-    message: string,
-  ) {
-    super(`Cloudflare API ${status} on ${endpoint}: ${message}`);
-    this.name = 'CloudflareAPIError';
+export function getCloudflareClient(): Cloudflare {
+  if (testClient) return testClient;
+  if (FIXTURE_MODE) return fixtureClient();
+  if (!defaultClient) {
+    const { apiToken } = getCloudflareApiConfig();
+    defaultClient = new Cloudflare({ apiToken });
   }
+  return defaultClient;
 }
 
-export class InvalidTimeRangeError extends Error {
-  constructor(
-    public readonly field: string,
-    public readonly value: string,
-  ) {
-    super(`Invalid ${field}: "${value}" is not a valid RFC 3339 / ISO 8601 timestamp.`);
-    this.name = 'InvalidTimeRangeError';
+// Cloudforce One carries its own (optional) token, distinct from CF_API_TOKEN.
+export function getCloudforceOneClient(apiToken: string): Cloudflare {
+  if (testClient) return testClient;
+  if (FIXTURE_MODE) return fixtureClient();
+  if (!cloudforceOneClient) {
+    cloudforceOneClient = new Cloudflare({ apiToken });
   }
+  return cloudforceOneClient;
 }
 
-/**
- * Normalize a model-supplied ISO 8601 timestamp to the strict RFC 3339 form the
- * Logs Engine expects: whole seconds, UTC "Z" (e.g. `2022-06-06T16:00:00Z`).
- * Throws InvalidTimeRangeError on an unparseable value so a bad time window
- * fails fast with a clear message instead of an opaque upstream 4xx.
- */
-function toRfc3339(value: string, field: string): string {
-  const ms = Date.parse(value);
-  if (Number.isNaN(ms)) throw new InvalidTimeRangeError(field, value);
-  return new Date(Math.floor(ms / 1000) * 1000).toISOString().replace(/\.000Z$/, 'Z');
+export function __setCloudflareClientForTests(client: Cloudflare | undefined): void {
+  testClient = client;
+  defaultClient = undefined;
+  cloudforceOneClient = undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// Maps an SDK error to a short status note. A failed or unknown lookup must
+// never be reported as clean, so callers attach the note to a
+// "lookup_failed"/"no_match" result instead of throwing to the model.
+export interface CfErrorNote {
+  status?: number;
+  notFound: boolean;
+  note: string;
+}
 
-async function parseV4Response<T>(res: Response, endpoint: string): Promise<T> {
-  if (!res.ok) {
-    const body = await res.text().catch(() => '(unreadable)');
-    throw new CloudflareAPIError(res.status, endpoint, body);
+export function cfErrorNote(err: unknown): CfErrorNote {
+  if (err instanceof APIError && typeof err.status === 'number') {
+    const status = err.status;
+    if (status === 404) return { status, notFound: true, note: 'no record found (404)' };
+    if (status === 401 || status === 403) {
+      return { status, notFound: false, note: `no read access (${status})` };
+    }
+    if (status === 429) return { status, notFound: false, note: 'rate limited (429)' };
+    if (status >= 500) return { status, notFound: false, note: `upstream error (${status})` };
+    return { status, notFound: false, note: `request failed (${status})` };
   }
-  const json = (await res.json()) as {
-    success: boolean;
-    result: T;
-    errors?: Array<{ message: string }>;
-  };
-  if (!json.success) {
-    const msg = json.errors?.map((e) => e.message).join('; ') ?? 'unknown error';
-    throw new CloudflareAPIError(res.status, endpoint, msg);
-  }
-  return json.result;
-}
-
-// ---------------------------------------------------------------------------
-// REST API — standard /accounts/{id}/... endpoints (read-only: retried)
-// ---------------------------------------------------------------------------
-
-export async function cfFetch<T = unknown>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
-  const { apiToken, accountId } = getCloudflareApiConfig();
-  const url = `${CF_API_BASE}/accounts/${accountId}${path}`;
-  const res = await fetchWithRetry(() =>
-    fetchWithTimeout(url, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    }),
-  );
-  return parseV4Response<T>(res, path);
-}
-
-/**
- * Like cfFetch, but authenticated with an explicit token — used by Cloudforce
- * One, which carries its own (optional) API token distinct from CF_API_TOKEN.
- */
-export async function cfFetchWithToken<T = unknown>(
-  accountId: string,
-  apiToken: string,
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
-  const url = `${CF_API_BASE}/accounts/${accountId}${path}`;
-  const res = await fetchWithRetry(() =>
-    fetchWithTimeout(url, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    }),
-  );
-  return parseV4Response<T>(res, path);
-}
-
-// ---------------------------------------------------------------------------
-// Logs Engine — streams NDJSON from R2 and returns parsed records
-// Docs: https://developers.cloudflare.com/logs/r2-log-retrieval/
-// ---------------------------------------------------------------------------
-
-export async function logsRetrieve<T = Record<string, unknown>>(
-  start: string,
-  end: string,
-  dataset: LogDataset,
-): Promise<T[]> {
-  const cfg = getLogsConfig();
-  const prefix = cfg.prefixFor(dataset);
-
-  const params = new URLSearchParams({
-    start: toRfc3339(start, 'fromTime'),
-    end: toRfc3339(end, 'toTime'),
-    bucket: cfg.bucket,
-    prefix,
-  });
-  const endpoint = `/logs/retrieve?${params}`;
-  const url = `${CF_API_BASE}/accounts/${cfg.accountId}${endpoint}`;
-
-  const res = await fetchWithRetry(() =>
-    fetchWithTimeout(url, {
-      headers: {
-        Authorization: `Bearer ${cfg.apiToken}`,
-        'R2-Access-Key-Id': cfg.r2AccessKeyId,
-        'R2-Secret-Access-Key': cfg.r2SecretAccessKey,
-      },
-    }),
-  );
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '(unreadable)');
-    throw new CloudflareAPIError(res.status, endpoint, body);
-  }
-
-  const ndjson = await res.text();
-  return ndjson
-    .split('\n')
-    .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line) as T);
+  return { notFound: false, note: err instanceof Error ? err.message : String(err) };
 }

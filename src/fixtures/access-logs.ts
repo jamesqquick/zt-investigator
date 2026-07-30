@@ -1,10 +1,3 @@
-/**
- * Fixture: three denied Access login attempts from Romania (Tor exit node IP),
- * two against HR Dashboard, one against Engineering Ops Portal.
- *
- * Shape mirrors real access_requests Logpush records (PascalCase).
- * Docs: https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/access_requests/
- */
 import type { AccessRequestRecord } from '../tools/access-logs.ts';
 
 export const accessLogsFixture: {

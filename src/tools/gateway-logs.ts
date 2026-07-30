@@ -1,35 +1,27 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
-import { gatewayDNSLogsFixture, gatewayHTTPLogsFixture } from '../fixtures/index.ts';
-import { useFixtures } from '../lib/config.ts';
-import { logsRetrieve } from '../lib/cf-client.ts';
+import { logsRetrieve } from '../lib/logs-client.ts';
 import { filterRecords } from './filter.ts';
 import { asJson } from '../lib/json.ts';
 
-/**
- * Native Logpush gateway_dns record shape (PascalCase).
- * Docs: https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/gateway_dns/
- */
+// gateway_dns Logpush record (PascalCase). https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/gateway_dns/
 export type GatewayDNSRecord = {
   AccountID: string;
   ApplicationName: string;
   CategoryNames: string[];
-  Datetime: string;                 // ISO 8601
-  DeviceID: string;                 // WARP device UUID — use this to call get_device_posture
+  Datetime: string;
+  DeviceID: string;                 // WARP device UUID — pass to get_device_posture
   DeviceName: string;
-  Email: string;                    // user email
-  QueryName: string;                // queried domain
-  QueryType: string;                // A, AAAA, CNAME, etc.
+  Email: string;
+  QueryName: string;
+  QueryType: string;
   ResolverDecision: string;         // allowedOnNoPolicyMatch | blockedByCategory | allowedByPolicy | etc.
-  Action: string;                   // allow | block
+  Action: string;
   PolicyName?: string;
   ResolvedIPs?: string[];
 };
 
-/**
- * Native Logpush gateway_http record shape (PascalCase).
- * Docs: https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/gateway_http/
- */
+// gateway_http Logpush record (PascalCase). https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/gateway_http/
 export type GatewayHTTPRecord = {
   AccountID: string;
   Action: string;                         // allow | block | isolate | etc.
@@ -64,9 +56,11 @@ export const getGatewayDNSLogs = defineTool({
     'DeviceID can be passed to get_device_posture for device details.',
   input: timeWindowInput,
   async run({ data }) {
-    const records = useFixtures()
-      ? gatewayDNSLogsFixture.records
-      : await logsRetrieve<GatewayDNSRecord>(data.fromTime, data.toTime, 'gateway_dns');
+    const records = await logsRetrieve<GatewayDNSRecord>(
+      data.fromTime,
+      data.toTime,
+      'gateway_dns',
+    );
 
     const filtered = filterRecords(records, {
       email: data.userEmail,
@@ -92,9 +86,11 @@ export const getGatewayHTTPLogs = defineTool({
     'DownloadMatchedDlpProfiles, DestinationIP, Datetime.',
   input: timeWindowInput,
   async run({ data }) {
-    const records = useFixtures()
-      ? gatewayHTTPLogsFixture.records
-      : await logsRetrieve<GatewayHTTPRecord>(data.fromTime, data.toTime, 'gateway_http');
+    const records = await logsRetrieve<GatewayHTTPRecord>(
+      data.fromTime,
+      data.toTime,
+      'gateway_http',
+    );
 
     const filtered = filterRecords(records, {
       email: data.userEmail,

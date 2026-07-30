@@ -1,19 +1,10 @@
-/**
- * Shared record filtering for the log tools.
- *
- * The live Logs Engine query returns every record in the window, so we filter
- * by user email client-side. We apply the same predicate to fixtures so
- * fixture mode behaves like live mode (e.g. investigating a different user
- * does not return another user's canned records).
- */
-
+// The Logs Engine query returns every record in the window; this filters by
+// user email client-side so one user's investigation never returns another's.
 export interface FilterOptions<T> {
   email: string;
   fromTime: string;
   toTime: string;
-  /** Record key holding the user email (e.g. 'Email'). */
   emailKey: keyof T;
-  /** Record key holding the ISO 8601 timestamp (e.g. 'CreatedAt', 'Datetime'). */
   timeKey: keyof T;
 }
 
@@ -29,8 +20,8 @@ export function filterRecords<T>(
     const recordEmail = String(record[emailKey] ?? '').toLowerCase();
     if (recordEmail !== target) return false;
 
-    // If the timestamp is missing or unparseable, keep the record rather than
-    // silently dropping potentially relevant evidence.
+    // Keep records with a missing/unparseable timestamp rather than silently
+    // dropping potentially relevant evidence.
     const ts = Date.parse(String(record[timeKey] ?? ''));
     if (Number.isNaN(ts)) return true;
     if (!Number.isNaN(from) && ts < from) return false;

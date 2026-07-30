@@ -7,12 +7,10 @@ import {
   getSlackConfig,
   InvalidConfigError,
   MissingConfigError,
-  useFixtures,
 } from '../src/lib/config.ts';
 
 // Config reads process.env at call time, so each test mutates a clean copy.
 const CONFIG_VARS = [
-  'USE_FIXTURES',
   'MODEL',
   'CF_API_TOKEN',
   'CF_ACCOUNT_ID',
@@ -37,16 +35,6 @@ afterEach(() => {
     if (saved[key] === undefined) delete process.env[key];
     else process.env[key] = saved[key];
   }
-});
-
-describe('useFixtures', () => {
-  test('true only for the exact string "true"', () => {
-    expect(useFixtures()).toBe(false);
-    process.env.USE_FIXTURES = 'false';
-    expect(useFixtures()).toBe(false);
-    process.env.USE_FIXTURES = 'true';
-    expect(useFixtures()).toBe(true);
-  });
 });
 
 describe('getModel', () => {
@@ -111,12 +99,8 @@ describe('getCloudforceOneConfig (optional)', () => {
 });
 
 describe('cloudforceOneEnabled', () => {
-  test('false when neither fixtures nor token', () => {
+  test('false when the token is absent', () => {
     expect(cloudforceOneEnabled()).toBe(false);
-  });
-  test('true in fixture mode even without a token', () => {
-    process.env.USE_FIXTURES = 'true';
-    expect(cloudforceOneEnabled()).toBe(true);
   });
   test('true when the token is present', () => {
     process.env.CLOUDFORCE_ONE_API_TOKEN = 'cf1-token';

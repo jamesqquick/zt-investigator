@@ -33,7 +33,7 @@ describe('buildBlocks', () => {
     const blocks = buildBlocks(report) as Array<Record<string, any>>;
     expect(blocks[0].type).toBe('header');
     expect(blocks[0].text.text).toContain('CRITICAL');
-    expect(blocks[0].text.text).toContain('\u{1F534}'); // red
+    expect(blocks[0].text.text).toContain('\u{1F534}');
   });
   test('exposes the three context fields', () => {
     const blocks = buildBlocks(report) as Array<Record<string, any>>;
@@ -51,8 +51,7 @@ describe('buildBlocks', () => {
   });
 });
 
-// Minimal ToolContext stand-in for a durable tool: `step.do` runs the work
-// inline (no interruption), and `log` is a no-op sink.
+// ToolContext stand-in: step.do runs inline (no interruption), log is a no-op.
 function runCtx(data: typeof report) {
   return {
     data,

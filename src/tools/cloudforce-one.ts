@@ -1,31 +1,8 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
-import { cloudforceOneFixture } from '../fixtures/index.ts';
-import { getCloudforceOneConfig, useFixtures } from '../lib/config.ts';
-import { fetchWithRetry, fetchWithTimeout } from '../lib/http.ts';
+import { getCloudforceOneConfig } from '../lib/config.ts';
+import { cfErrorNote, getCloudforceOneClient } from '../lib/cf-client.ts';
 import { asJson } from '../lib/json.ts';
-
-/**
- * Cloudforce One threat-event enrichment (OPTIONAL).
- *
- * Cloudforce One is Cloudflare's managed threat-intelligence service. Unlike
- * the generic reputation lookup in ./intel.ts, it provides curated, ATTRIBUTED
- * events: which named actor / campaign an indicator belongs to, MITRE ATT&CK
- * mapping, kill-chain phase, and analyst insight.
- *
- * We query Threat Events by indicator:
- *   GET /accounts/{id}/cloudforce-one/events?search=[{field:indicator,op:in,value:[...]}]
- *
- * This tool is READ-ONLY and only runs when CLOUDFORCE_ONE_API_TOKEN is set;
- * otherwise it returns { available: false } and the agent proceeds without it.
- *
- * [verify] The exact GET encoding of the `search` array-of-object parameter and
- * the `datasetId=all` semantics should be confirmed against a live Cloudforce
- * One account. On any query error this tool degrades to status "lookup_failed"
- * (never a false "no threat") so a coverage gap is always visible.
- */
-
-const CF_API_BASE = 'https://api.cloudflare.com/client/v4';
 
 interface RawThreatEvent {
   uuid: string;
@@ -59,12 +36,8 @@ export type ThreatEvent = {
   date?: string;
 };
 
-/**
- * matched       — one or more attributed threat events reference this indicator.
- * no_match      — Cloudforce One has no events for this indicator (a real,
- *                 meaningful result — not an error).
- * lookup_failed — the query errored; coverage is unknown for this indicator.
- */
+// status: matched (attributed events reference this indicator) | no_match (a
+// real result, not an error) | lookup_failed (query errored, coverage unknown).
 export type CloudforceOneEntry = {
   indicator: string;
   status: 'matched' | 'no_match' | 'lookup_failed';
@@ -100,23 +73,13 @@ async function queryThreatEvents(
   dataset: string,
   indicators: string[],
 ): Promise<RawThreatEvent[]> {
-  const params = new URLSearchParams({ datasetId: dataset, pageSize: '100' });
-  // Bulk indicator lookup via the documented `search` filter (op:'in').
-  params.append('search[0][field]', 'indicator');
-  params.append('search[0][op]', 'in');
-  for (const indicator of indicators) params.append('search[0][value][]', indicator);
-
-  const url = `${CF_API_BASE}/accounts/${accountId}/cloudforce-one/events?${params}`;
-  const res = await fetchWithRetry(() =>
-    fetchWithTimeout(url, { headers: { Authorization: `Bearer ${apiToken}` } }),
-  );
-  if (!res.ok) {
-    const body = await res.text().catch(() => '(unreadable)');
-    throw new Error(`Cloudforce One ${res.status}: ${body}`);
-  }
-  const json = (await res.json()) as RawThreatEvent[] | { result?: RawThreatEvent[] };
-  // The events endpoint returns a bare array; tolerate a v4 envelope too.
-  return Array.isArray(json) ? json : (json.result ?? []);
+  const events = await getCloudforceOneClient(apiToken).cloudforceOne.threatEvents.list({
+    account_id: accountId,
+    datasetId: [dataset],
+    pageSize: 100,
+    search: [{ field: 'indicator', op: 'in', value: indicators }],
+  });
+  return (events ?? []) as unknown as RawThreatEvent[];
 }
 
 export const getCloudforceOneEvents = defineTool({
@@ -134,18 +97,6 @@ export const getCloudforceOneEvents = defineTool({
     ),
   }),
   async run({ data }) {
-    if (useFixtures()) {
-      const results: Record<string, CloudforceOneEntry> = {};
-      for (const indicator of data.indicators) {
-        results[indicator] = cloudforceOneFixture[indicator] ?? {
-          indicator,
-          status: 'no_match',
-          events: [],
-        };
-      }
-      return asJson({ available: true, results } satisfies CloudforceOneResult);
-    }
-
     const config = getCloudforceOneConfig();
     if (!config) {
       return asJson({ available: false, reason: 'CLOUDFORCE_ONE_API_TOKEN not set' } satisfies CloudforceOneResult);
@@ -172,11 +123,13 @@ export const getCloudforceOneEvents = defineTool({
         entry.events.push(normalize(raw));
       }
     } catch (err) {
-      // Coverage is now unknown for the whole batch — surface it rather than
-      // reporting a misleading "no_match".
-      const message = err instanceof Error ? err.message : String(err);
-      for (const indicator of data.indicators) {
-        results[indicator] = { indicator, status: 'lookup_failed', events: [], error: message };
+      const { notFound, note } = cfErrorNote(err);
+      // 404 = dataset holds no events (real no_match, keep defaults). Any other
+      // error = coverage unknown: surface it rather than a false "no_match".
+      if (!notFound) {
+        for (const indicator of data.indicators) {
+          results[indicator] = { indicator, status: 'lookup_failed', events: [], error: note };
+        }
       }
     }
 

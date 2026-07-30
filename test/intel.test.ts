@@ -1,5 +1,56 @@
+import type Cloudflare from 'cloudflare';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { classify, getIndicatorIntel, type IntelEntry } from '../src/tools/intel.ts';
+import { __setCloudflareClientForTests } from '../src/lib/cf-client.ts';
+
+// RAW /intel/ip responses — arrays, as the SDK returns them.
+const ipResponses: Record<string, unknown[]> = {
+  '185.220.101.45': [
+    {
+      ip: '185.220.101.45',
+      belongs_to_ref: {
+        value: '24940',
+        description: 'HETZNER-AS',
+        country: 'DE',
+        type: 'hosting_provider',
+      },
+      risk_types: [{ name: 'Anonymizer' }, { name: 'Botnet, Command and Control' }],
+    },
+  ],
+  // 8.8.8.8: no intel record → empty array → lookup_failed (never "clean").
+  '8.8.8.8': [],
+};
+
+// RAW /intel/domain responses — a single object, as the SDK returns.
+const domainResponses: Record<string, unknown> = {
+  'malware-c2-domain.ru': {
+    domain: 'malware-c2-domain.ru',
+    content_categories: [
+      { id: 1, name: 'Malware' },
+      { id: 2, name: 'Command and Control' },
+    ],
+    resolves_to_refs: [{ id: 'r1', value: '91.108.4.1' }],
+    risk_score: 1,
+    risk_types: [{ name: 'Malware' }],
+  },
+};
+
+// Fake client exposing only the intel methods the tool calls.
+const fakeClient = {
+  intel: {
+    ips: {
+      get: async (params: { ipv4?: string; ipv6?: string }) =>
+        ipResponses[params.ipv4 ?? params.ipv6 ?? ''] ?? [],
+    },
+    domains: {
+      get: async (params: { domain?: string }) => {
+        const hit = domainResponses[params.domain ?? ''];
+        if (!hit) throw new Error('no such domain');
+        return hit;
+      },
+    },
+  },
+} as unknown as Cloudflare;
 
 describe('classify', () => {
   test('IPv4', () => {
@@ -21,20 +72,27 @@ describe('classify', () => {
   });
 });
 
-// The tool's run returns a JsonValue; cast back to the known shape for assertions.
+// run() returns a JsonValue; cast back to the known shape for assertions.
 type IntelResult = Record<string, IntelEntry>;
 const runIntel = (indicators: string[]) =>
   getIndicatorIntel.run({ data: { indicators } } as never) as Promise<IntelResult>;
 
-describe('get_indicator_intel (fixture mode)', () => {
-  let saved: string | undefined;
+describe('get_indicator_intel (injected client)', () => {
+  const savedEnv: Record<string, string | undefined> = {};
   beforeEach(() => {
-    saved = process.env.USE_FIXTURES;
-    process.env.USE_FIXTURES = 'true';
+    for (const key of ['CF_API_TOKEN', 'CF_ACCOUNT_ID']) {
+      savedEnv[key] = process.env[key];
+    }
+    process.env.CF_API_TOKEN = 'tok';
+    process.env.CF_ACCOUNT_ID = 'acct123';
+    __setCloudflareClientForTests(fakeClient);
   });
   afterEach(() => {
-    if (saved === undefined) delete process.env.USE_FIXTURES;
-    else process.env.USE_FIXTURES = saved;
+    __setCloudflareClientForTests(undefined);
+    for (const key of ['CF_API_TOKEN', 'CF_ACCOUNT_ID']) {
+      if (savedEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = savedEnv[key];
+    }
   });
 
   test('returns enriched threat entries for known indicators', async () => {

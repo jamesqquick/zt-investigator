@@ -1,21 +1,3 @@
-/**
- * Single source of truth for runtime configuration.
- *
- * Every env var the agent reads is resolved and validated here, so a
- * misconfiguration surfaces as one clear, aggregated error instead of an
- * opaque failure deep inside an API call. On Cloudflare, Flue resolves
- * secrets through `nodejs_compat`'s `process.env`, so that is the mechanism
- * used here too (set them as Wrangler vars/secrets when deployed, or in
- * `.env` for local `flue run`).
- *
- * Access model:
- *   - Cloudflare data credentials fail LOUDLY when live mode needs them.
- *   - Slack fails CLOSED (missing signing secret => request verification
- *     rejects) rather than crashing the Worker at boot.
- *   - Cloudforce One is OPTIONAL: getCloudforceOneConfig() returns null when
- *     its token is absent, and the enrichment step is skipped.
- */
-
 export class MissingConfigError extends Error {
   constructor(
     public readonly vars: string[],
@@ -33,25 +15,11 @@ export class InvalidConfigError extends Error {
   }
 }
 
-/** Read an env var, treating empty / whitespace-only values as unset. */
 function read(name: string): string | undefined {
   const value = process.env[name];
   return value && value.trim().length > 0 ? value : undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Fixtures & model
-// ---------------------------------------------------------------------------
-
-/** When true, tools return local fixtures instead of calling real APIs. */
-export function useFixtures(): boolean {
-  return process.env.USE_FIXTURES === 'true';
-}
-
-/**
- * Model specifier, e.g. `openai/gpt-4o` (local) or `cloudflare/openai/gpt-4o`
- * (routed through the Workers AI binding / AI Gateway when deployed).
- */
 export function getModel(): `${string}/${string}` {
   const raw = process.env.MODEL ?? 'openai/gpt-4o';
   if (!/^[^/]+\/.+$/.test(raw)) {
@@ -61,10 +29,6 @@ export function getModel(): `${string}/${string}` {
   }
   return raw as `${string}/${string}`;
 }
-
-// ---------------------------------------------------------------------------
-// Cloudflare REST API (Access device lookup, Intel) — apiToken + accountId
-// ---------------------------------------------------------------------------
 
 export interface CloudflareApiConfig {
   apiToken: string;
@@ -81,15 +45,11 @@ export function getCloudflareApiConfig(): CloudflareApiConfig {
     throw new MissingConfigError(
       missing,
       'Required for live Cloudflare API calls. Set them as Worker secrets/vars ' +
-        '(or in .env for local runs), or set USE_FIXTURES=true.',
+        '(or in .env for local runs).',
     );
   }
   return { apiToken: apiToken!, accountId: accountId! };
 }
-
-// ---------------------------------------------------------------------------
-// Logs Engine (Logpush -> R2) — adds R2 keys, bucket, and dataset prefixes
-// ---------------------------------------------------------------------------
 
 export type LogDataset = 'access_requests' | 'gateway_dns' | 'gateway_http';
 
@@ -122,7 +82,7 @@ export function getLogsConfig(): LogsConfig {
   if (missing.length > 0) {
     throw new MissingConfigError(
       missing,
-      'Required for Logs Engine (Logpush -> R2) retrieval, or set USE_FIXTURES=true.',
+      'Required for Logs Engine (Logpush -> R2) retrieval.',
     );
   }
   return {
@@ -134,10 +94,6 @@ export function getLogsConfig(): LogsConfig {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Cloudforce One (OPTIONAL) — Threat Events queried by indicator
-// ---------------------------------------------------------------------------
-
 export interface CloudforceOneConfig {
   apiToken: string;
   accountId: string;
@@ -145,12 +101,8 @@ export interface CloudforceOneConfig {
   dataset: string;
 }
 
-/**
- * Returns Cloudforce One config only when CLOUDFORCE_ONE_API_TOKEN is set —
- * otherwise null, which callers treat as "skip Cloudforce One enrichment".
- * Requires CF_ACCOUNT_ID to also be present (throws if the token is set but
- * the account id is missing, since that is a genuine misconfiguration).
- */
+// Returns null when CLOUDFORCE_ONE_API_TOKEN is unset (callers skip enrichment).
+// Throws if the token is set but CF_ACCOUNT_ID is missing — a real misconfig.
 export function getCloudforceOneConfig(): CloudforceOneConfig | null {
   const apiToken = read('CLOUDFORCE_ONE_API_TOKEN');
   if (!apiToken) return null;
@@ -168,19 +120,13 @@ export function getCloudforceOneConfig(): CloudforceOneConfig | null {
   };
 }
 
-/** True when Cloudforce One enrichment is available (token present, or fixtures). */
 export function cloudforceOneEnabled(): boolean {
-  return useFixtures() || read('CLOUDFORCE_ONE_API_TOKEN') !== undefined;
+  return read('CLOUDFORCE_ONE_API_TOKEN') !== undefined;
 }
-
-// ---------------------------------------------------------------------------
-// Slack — fails closed rather than crashing the Worker
-// ---------------------------------------------------------------------------
 
 export interface SlackConfig {
   /** Empty string when unset — verification then rejects (fail closed). */
   signingSecret: string;
-  /** Undefined when unset — the report tool falls back to run output. */
   botToken: string | undefined;
 }
 

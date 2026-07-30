@@ -9,22 +9,19 @@ import { createTriageReportTool } from '../tools/slack-report.ts';
 import triageSkill from '../skills/triage/SKILL.md';
 
 export function ZeroTrustInvestigator() {
-  // Local (flue run): MODEL=openai/gpt-4o  — uses OPENAI_API_KEY directly.
-  // Deployed (Cloudflare Worker): MODEL=cloudflare/openai/gpt-4o — routes
-  // through AI Gateway via the Worker AI binding, no OPENAI_API_KEY needed.
+  // MODEL is provider/model. Local uses the provider key directly (e.g.
+  // openai/gpt-4o); deployed uses cloudflare/openai/gpt-4o to route via AI Gateway.
   useModel(getModel());
-  // When triggered from Slack, dispatch seeds the originating thread as
-  // creation data (validated by the initialData static below); the report tool
-  // posts back to it. Undefined under `flue run`, where reports go to run output.
+  // Set from the originating Slack thread (validated by initialData below) so the
+  // report tool can post back; undefined under `flue run`.
   const slackThread = useInitialData<v.InferOutput<typeof ZeroTrustInvestigator.initialData>>();
   useSkill(triageSkill);
   useTool(createTriageReportTool(slackThread));
   useSubagent(cfDataCollector);
   useSubagent(threatIntel);
 
-  // Trusted requester identity: the Slack channel attaches the requesting
-  // user's id to the signal's `attributes` in verified webhook code, never
-  // from model input. Surface it so the triage report can attribute who asked.
+  // Trusted requester identity: set on the signal's `attributes` by verified
+  // webhook code, never from model input. Surfaced so the report can attribute who asked.
   const delivery = useDelivery();
   const requestedBy = delivery.kind === 'signal' ? delivery.attributes?.requestedBy : undefined;
 
@@ -40,8 +37,7 @@ export function ZeroTrustInvestigator() {
 
 ZeroTrustInvestigator.agentName = 'zero-trust-investigator';
 
-// Validate the Slack thread creation data once, at instance creation. Optional
-// so local `flue run` (no Slack thread) still works, while a malformed Slack
+// Optional so local `flue run` works with no Slack thread; a malformed Slack
 // dispatch fails fast at admission instead of seeding a broken conversation.
 ZeroTrustInvestigator.initialData = v.optional(
   v.object({

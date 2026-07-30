@@ -1,9 +1,11 @@
+import type Cloudflare from 'cloudflare';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   getCloudforceOneEvents,
   type CloudforceOneEntry,
 } from '../src/tools/cloudforce-one.ts';
 import { cloudforceOneEnabled } from '../src/lib/config.ts';
+import { __setCloudflareClientForTests } from '../src/lib/cf-client.ts';
 
 type CloudforceOneResult =
   | { available: false; reason: string }
@@ -12,7 +14,35 @@ type CloudforceOneResult =
 const runCF1 = (indicators: string[]) =>
   getCloudforceOneEvents.run({ data: { indicators } } as never) as Promise<CloudforceOneResult>;
 
-const TOKEN_VARS = ['USE_FIXTURES', 'CLOUDFORCE_ONE_API_TOKEN', 'CF_ACCOUNT_ID'];
+// RAW threat_events list response — a bare array, as the SDK returns. Only the
+// C2 domain has an attributed event; other indicators → no_match.
+const eventsResponse = [
+  {
+    uuid: '7f3a1c22-9b4e-4d1a-8c2f-1e6b0a9d5c30',
+    indicator: 'malware-c2-domain.ru',
+    indicatorType: 'domain',
+    category: 'Command and Control',
+    event: 'Domain observed as active C2 for the SALT TYPHOON intrusion set',
+    attacker: 'Salt Typhoon',
+    attackerCountry: 'CN',
+    killChain: 6,
+    mitreAttack: ['T1071.001', 'T1041'],
+    tags: ['apt', 'c2', 'data-exfiltration'],
+    tlp: 'amber',
+    insight: 'Infrastructure attributed to Salt Typhoon.',
+    date: '2026-07-20T00:00:00Z',
+  },
+];
+
+const fakeClient = {
+  cloudforceOne: {
+    threatEvents: {
+      list: async () => eventsResponse,
+    },
+  },
+} as unknown as Cloudflare;
+
+const TOKEN_VARS = ['CLOUDFORCE_ONE_API_TOKEN', 'CF_ACCOUNT_ID'];
 let saved: Record<string, string | undefined>;
 
 beforeEach(() => {
@@ -23,6 +53,7 @@ beforeEach(() => {
   }
 });
 afterEach(() => {
+  __setCloudflareClientForTests(undefined);
   for (const key of TOKEN_VARS) {
     if (saved[key] === undefined) delete process.env[key];
     else process.env[key] = saved[key];
@@ -30,7 +61,7 @@ afterEach(() => {
 });
 
 describe('gating', () => {
-  test('disabled when neither fixtures nor token', () => {
+  test('disabled when the token is absent', () => {
     expect(cloudforceOneEnabled()).toBe(false);
   });
 });
@@ -43,9 +74,11 @@ describe('get_cloudforce_one_events (live, unconfigured)', () => {
   });
 });
 
-describe('get_cloudforce_one_events (fixture mode)', () => {
+describe('get_cloudforce_one_events (injected client)', () => {
   beforeEach(() => {
-    process.env.USE_FIXTURES = 'true';
+    process.env.CLOUDFORCE_ONE_API_TOKEN = 'cf1-token';
+    process.env.CF_ACCOUNT_ID = 'acct123';
+    __setCloudflareClientForTests(fakeClient);
   });
 
   test('matches an attributed event and preserves attribution', async () => {
