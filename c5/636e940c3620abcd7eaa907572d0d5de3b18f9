@@ -1,0 +1,19 @@
+src/agents/zero-trust-investigator.ts
+  s_8e6b7cefca5482::t_1dc3daf50cf8f1 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c5636e940c3620abcd7eaa907572d0d5de3b18f9",
+  "prompts": {},
+  "sessions": {
+    "s_8e6b7cefca5482": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_04c8c9553ffeGUUu6eALNRgnda",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
