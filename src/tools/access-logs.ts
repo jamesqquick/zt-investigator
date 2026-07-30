@@ -32,24 +32,15 @@ export const getAccessLogs = defineTool({
     toTime: v.pipe(v.string(), v.description('ISO 8601 window end')),
   }),
   async run({ data }) {
-    const records = await logsRetrieve<AccessRequestRecord>(
-      data.fromTime,
-      data.toTime,
-      'access_requests',
-    );
-
-    const filtered = filterRecords(records, {
-      email: data.userEmail,
-      fromTime: data.fromTime,
-      toTime: data.toTime,
-      emailKey: 'Email',
-      timeKey: 'CreatedAt',
-    });
-
-    return asJson({
-      records: filtered,
-      total: filtered.length,
-      dataset: 'access_requests',
-    });
+    // TODO Step 2: implement this tool.
+    // 1. Fetch raw access_requests records for the window:
+    //      logsRetrieve<AccessRequestRecord>(data.fromTime, data.toTime, 'access_requests')
+    // 2. Narrow to this user + window with filterRecords(records, {
+    //      email: data.userEmail, fromTime: data.fromTime, toTime: data.toTime,
+    //      emailKey: 'Email', timeKey: 'CreatedAt' })
+    // 3. return asJson({ records: filtered, total: filtered.length, dataset: 'access_requests' })
+    // The building blocks (logsRetrieve, filterRecords, asJson) are imported above.
+    void data;
+    throw new Error('Not implemented — complete this in Step 2');
   },
 });

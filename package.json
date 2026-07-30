@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "agent": "flue run",
+    "agent": "flue run src/agents/zero-trust-investigator.ts --message",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
