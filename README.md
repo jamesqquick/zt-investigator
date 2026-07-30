@@ -132,8 +132,13 @@ The triage report prints to the run output.
 
 Set `USE_FIXTURES=false` and provide the Cloudflare credentials below. The data
 tools then call the real Logs Engine, Zero Trust devices, and Intel APIs. A
-single `CF_API_TOKEN` with **Account Intel Read, Zero Trust Read, and Logs Read**
-covers the baseline flow (Cloudforce One uses its own optional token).
+single `CF_API_TOKEN` with **Account Intel Read, Zero Trust Read, and Logs Read
++ Edit** covers the baseline flow (Cloudforce One uses its own optional token).
+
+> **Logs token scope:** the Logs Engine `/logs/retrieve` endpoint documents
+> token auth as requiring **Logs Edit** (Logpull), even though retrieval is a
+> read. Grant Logs Read *and* Edit, or fall back to `X-Auth-Email` / `X-Auth-Key`
+> with Logshare read. Confirm the exact scope against your account.
 
 ```bash
 USE_FIXTURES=false pnpm run agent -- "investigate alice@corp.com"
@@ -166,7 +171,7 @@ deep in an API call.
 | `USE_FIXTURES` | – | `true` uses local fixtures (no credentials). Default in `.env.example`. |
 | `MODEL` | – | `provider/model`. Default `openai/gpt-4o`. |
 | `OPENAI_API_KEY` | local only | Needed when `MODEL=openai/gpt-4o`. |
-| `CF_API_TOKEN` | live | Account Intel Read, Zero Trust Read, Logs Read. |
+| `CF_API_TOKEN` | live | Account Intel Read, Zero Trust Read, Logs Read + Edit (see note above). |
 | `CF_ACCOUNT_ID` | live | Cloudflare account id. |
 | `CF_R2_ACCESS_KEY_ID` / `CF_R2_SECRET_ACCESS_KEY` | live | Logs Engine (Logpush → R2) retrieval. |
 | `CF_LOG_BUCKET` | – | R2 bucket for logs. Default `zt-investigator-logs`. |

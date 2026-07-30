@@ -3,13 +3,12 @@
   "name": "zt-investigator",
   "compatibility_date": "2026-06-01",
   "compatibility_flags": ["nodejs_compat"],
-  // AI binding — used by the cloudflare provider for Workers AI / AI Gateway
   "ai": {
     "binding": "AI"
   },
-  // Flue generates one Durable Object class per exported agent.
-  // zero-trust-investigator (agentName) -> FlueZeroTrustInvestigatorAgent
-  // Do not hand-author FLUE_* bindings — Flue merges those automatically.
+  "vars": {
+    "MODEL": "cloudflare/openai/gpt-4o"
+  },
   "migrations": [
     {
       "tag": "v1",

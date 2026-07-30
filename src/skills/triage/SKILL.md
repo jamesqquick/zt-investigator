@@ -43,7 +43,7 @@ Assign an overall risk level based on the combination of signals:
 | Gateway HTTP record `Action: block` | Medium |
 | Gateway record `DownloadMatchedDlpProfiles` non-empty (DLP match) | High |
 | Multiple failed Access attempts (`Allowed: false`) in short window | High |
-| Baseline intel `status: "enriched"` with `is_threat: true`, or IP `ip_lists` non-empty (Tor/VPN/C2) | Critical |
+| Baseline intel `status: "enriched"` with `is_threat: true`, or IP `risk_types` non-empty (malware/anonymizer/C2) | Critical |
 | Cloudforce One `status: "matched"` (attributed to a named actor/campaign) | Critical |
 | Device `last_seen_at` or `os_version` anomalous / outdated | Medium |
 | All signals normal (all intel `enriched`/`no_match`, nothing suspicious) | Low |
@@ -67,7 +67,7 @@ When calling `post_triage_report`, produce the following:
 - **gatewayActivity**: notable DNS/HTTP records in the window — `QueryName`/`HTTPHost`, `Action`, `CategoryNames`
 - **postureStatus**: device identity summary — `name`, `device_type`, `os_version`, `last_seen_at` (note: Cloudflare exposes no per-check posture results via API)
 - **threatIntelHits**: one bullet per notable indicator, including:
-  - baseline hits where `status: "enriched"` and `is_threat: true` (e.g. `1.2.3.4 — on Tor exit-node list`)
+  - baseline hits where `status: "enriched"` and `is_threat: true` (e.g. `1.2.3.4 — risk_types: Anonymizer, Botnet`)
   - Cloudforce One `matched` attributions (e.g. `malware-c2-domain.ru — attributed to "Salt Typhoon" (C2, MITRE T1071)`)
   - coverage gaps where `status: "lookup_failed"` (e.g. `5.6.7.8 — lookup_failed: intel API timeout (unresolved)`)
   - empty array only if every indicator was evaluated and none were threats

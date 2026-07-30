@@ -30,6 +30,28 @@ export class CloudflareAPIError extends Error {
   }
 }
 
+export class InvalidTimeRangeError extends Error {
+  constructor(
+    public readonly field: string,
+    public readonly value: string,
+  ) {
+    super(`Invalid ${field}: "${value}" is not a valid RFC 3339 / ISO 8601 timestamp.`);
+    this.name = 'InvalidTimeRangeError';
+  }
+}
+
+/**
+ * Normalize a model-supplied ISO 8601 timestamp to the strict RFC 3339 form the
+ * Logs Engine expects: whole seconds, UTC "Z" (e.g. `2022-06-06T16:00:00Z`).
+ * Throws InvalidTimeRangeError on an unparseable value so a bad time window
+ * fails fast with a clear message instead of an opaque upstream 4xx.
+ */
+function toRfc3339(value: string, field: string): string {
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) throw new InvalidTimeRangeError(field, value);
+  return new Date(Math.floor(ms / 1000) * 1000).toISOString().replace(/\.000Z$/, 'Z');
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -112,8 +134,8 @@ export async function logsRetrieve<T = Record<string, unknown>>(
   const prefix = cfg.prefixFor(dataset);
 
   const params = new URLSearchParams({
-    start,
-    end,
+    start: toRfc3339(start, 'fromTime'),
+    end: toRfc3339(end, 'toTime'),
     bucket: cfg.bucket,
     prefix,
   });

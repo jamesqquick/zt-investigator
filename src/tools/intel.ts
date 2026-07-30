@@ -45,26 +45,37 @@ export function classify(indicator: string): IndicatorKind {
 // Raw API response types
 // ---------------------------------------------------------------------------
 
+// Shapes below mirror the documented v4 responses:
+//   /intel/domain -> https://developers.cloudflare.com/api/resources/intel/subresources/domains/methods/get/
+//   /intel/ip     -> https://developers.cloudflare.com/api/resources/intel/subresources/ips/methods/get/
+
+interface RiskType {
+  id?: number;
+  name?: string;
+  super_category_id?: number;
+}
+
 interface DomainIntelResult {
   domain: string;
   resolves_to_refs?: Array<{ id: string; value: string }>;
-  application?: Record<string, unknown>;
+  application?: { id?: number; name?: string };
   content_categories?: Array<{ id: number; name: string; super_category_id?: number }>;
   risk_score?: number;
-  notes?: string;
+  risk_types?: RiskType[];
 }
 
 interface IPIntelResult {
   ip: string;
   belongs_to_ref?: {
-    id: string;
-    value: number;
-    type: string;
-    country: string;
-    description: string;
+    id?: string;
+    // AS number, returned as a string by the API (e.g. "13335").
+    value?: string;
+    type?: string; // hosting_provider | isp | organization
+    country?: string;
+    description?: string;
   };
-  ip_lists?: string[] | null;
-  ptr_lookup?: { ptr_domains: string[]; ptr_lookup_errors: string };
+  // Security threat categories for the IP. Non-empty ⇒ Cloudflare flagged it.
+  risk_types?: RiskType[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,20 +98,25 @@ export type IntelEntry = {
   is_threat: boolean;
   error?: string;
   // IP fields
-  asn?: { number: number; description: string; country: string; type: string };
-  ip_lists?: string[] | null;
-  ptr_domains?: string[];
+  asn?: { number?: number; description?: string; country?: string; type?: string };
+  // Domain + IP fields
+  risk_types?: string[];
   // Domain fields
   content_categories?: string[];
   application?: string | null;
   resolves_to?: string[];
   risk_score?: number;
-  // Both
-  notes?: string;
 };
 
 function failed(indicator: string, kind: IntelEntry['kind'], error: string): IntelEntry {
   return { indicator, kind, status: 'lookup_failed', is_threat: false, error };
+}
+
+/** Extract non-empty risk-type names from an Intel response's risk_types array. */
+function riskTypeNames(types: RiskType[] | null | undefined): string[] {
+  return (types ?? [])
+    .map((t) => t?.name)
+    .filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
 async function enrichIP(indicator: string, kind: IndicatorKind): Promise<IntelEntry> {
@@ -109,44 +125,48 @@ async function enrichIP(indicator: string, kind: IndicatorKind): Promise<IntelEn
   const raw = await cfFetch<IPIntelResult[]>(`/intel/ip?${param}=${encodeURIComponent(indicator)}`);
   const entry = raw.find((r) => r.ip === indicator) ?? raw[0];
   if (!entry) return failed(indicator, 'ip', 'no intel record returned for indicator');
+  const risk_types = riskTypeNames(entry.risk_types);
+  const asNumber =
+    entry.belongs_to_ref?.value !== undefined ? Number(entry.belongs_to_ref.value) : undefined;
   return {
     indicator,
     kind: 'ip',
     status: 'enriched',
-    is_threat: Array.isArray(entry.ip_lists) && entry.ip_lists.length > 0,
+    // Non-empty risk_types = Cloudflare flagged this IP (malware/phishing/anonymizer/etc.).
+    is_threat: risk_types.length > 0,
     asn: entry.belongs_to_ref
       ? {
-          number: entry.belongs_to_ref.value,
+          number: Number.isFinite(asNumber) ? asNumber : undefined,
           description: entry.belongs_to_ref.description,
           country: entry.belongs_to_ref.country,
           type: entry.belongs_to_ref.type,
         }
       : undefined,
-    ip_lists: entry.ip_lists,
-    ptr_domains: entry.ptr_lookup?.ptr_domains,
+    risk_types,
   };
 }
 
 async function enrichDomain(indicator: string): Promise<IntelEntry> {
   const raw = await cfFetch<DomainIntelResult>(`/intel/domain?domain=${encodeURIComponent(indicator)}`);
   const categoryNames = raw.content_categories?.map((c) => c.name) ?? [];
-  const is_threat = categoryNames.some((name) =>
-    THREAT_CATEGORY_KEYWORDS.some((kw) => name.toLowerCase().includes(kw)),
-  );
-  const appName =
-    raw.application && Object.keys(raw.application).length > 0
-      ? JSON.stringify(raw.application)
-      : null;
+  const risk_types = riskTypeNames(raw.risk_types);
+  // A domain is a threat if Cloudflare tagged it with a risk type, or if any
+  // content category matches a known-malicious keyword.
+  const is_threat =
+    risk_types.length > 0 ||
+    categoryNames.some((name) =>
+      THREAT_CATEGORY_KEYWORDS.some((kw) => name.toLowerCase().includes(kw)),
+    );
   return {
     indicator,
     kind: 'domain',
     status: 'enriched',
     is_threat,
     content_categories: categoryNames,
-    application: appName,
+    application: raw.application?.name ?? null,
     resolves_to: raw.resolves_to_refs?.map((r) => r.value),
     risk_score: raw.risk_score,
-    notes: raw.notes,
+    risk_types: risk_types.length > 0 ? risk_types : undefined,
   };
 }
 
@@ -173,8 +193,8 @@ export const getIndicatorIntel = defineTool({
   name: 'get_indicator_intel',
   description:
     'Enrich IP addresses and domains with Cloudflare Intelligence (Security Center) reputation data. ' +
-    'Calls /intel/ip (ASN info + ip_lists membership — non-empty ip_lists means known malicious, e.g. Tor/Spamhaus) ' +
-    'and /intel/domain (content_categories, resolved IPs, risk_score). ' +
+    'Calls /intel/ip (ASN info + risk_types — non-empty risk_types means Cloudflare flagged the IP as malicious) ' +
+    'and /intel/domain (content_categories, risk_types, resolved IPs, risk_score). ' +
     'Every indicator is returned with status "enriched" or "lookup_failed"; a lookup_failed entry means the ' +
     'indicator could NOT be evaluated and must not be treated as clean.',
   input: v.object({

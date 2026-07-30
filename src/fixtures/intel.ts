@@ -4,7 +4,7 @@ import type { IntelEntry } from '../tools/intel.ts';
  * Fixture: Cloudflare Intelligence (Security Center) reputation results in the
  * normalized shape returned by get_indicator_intel.
  *
- * is_threat=true on the IP (Tor exit node in ip_lists) and on the C2 domain.
+ * is_threat=true on the IP (non-empty risk_types) and on the C2 domain.
  * pastebin.com is is_threat=false — legitimate site, but context matters.
  * Every entry carries status: 'enriched' (the lookup succeeded).
  */
@@ -18,10 +18,9 @@ export const intelFixture: Record<string, IntelEntry> = {
       number: 24940,
       description: 'HETZNER-AS',
       country: 'DE',
-      type: 'hosting',
+      type: 'hosting_provider',
     },
-    ip_lists: ['Tor Exit Node', 'Spamhaus DROP'],
-    ptr_domains: ['tor-exit-node.example.de'],
+    risk_types: ['Anonymizer', 'Botnet, Command and Control'],
   },
   'malware-c2-domain.ru': {
     indicator: 'malware-c2-domain.ru',
@@ -31,7 +30,8 @@ export const intelFixture: Record<string, IntelEntry> = {
     content_categories: ['Malware', 'Command and Control'],
     application: null,
     resolves_to: ['91.108.4.1'],
-    notes: 'Active C2 infrastructure associated with data-exfiltration campaigns.',
+    risk_score: 1,
+    risk_types: ['Malware'],
   },
   'pastebin.com': {
     indicator: 'pastebin.com',
@@ -41,6 +41,6 @@ export const intelFixture: Record<string, IntelEntry> = {
     content_categories: ['File Sharing', 'Technology'],
     application: null,
     resolves_to: ['104.20.1.23'],
-    notes: 'Legitimate site frequently abused for payload staging and exfiltration.',
+    risk_score: 0,
   },
 };
