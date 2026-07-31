@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { accessLogsFixture } from '../src/fixtures/index.ts';
-import type { AccessRequestRecord } from '../src/tools/access-logs.ts';
+import { gatewayDNSLogsFixture } from '../src/fixtures/index.ts';
+import type { GatewayDNSRecord } from '../src/tools/gateway-logs.ts';
 import {
   __setLogsFetchForTests,
   CloudflareLogsError,
@@ -38,21 +38,21 @@ afterEach(() => {
 
 describe('logsRetrieve (injected fetch)', () => {
   test('parses NDJSON and normalizes the time window to RFC 3339', async () => {
-    const ndjson = accessLogsFixture.records.map((r) => JSON.stringify(r)).join('\n') + '\n';
+    const ndjson = gatewayDNSLogsFixture.records.map((r) => JSON.stringify(r)).join('\n') + '\n';
     let capturedUrl = '';
     __setLogsFetchForTests(async (url) => {
       capturedUrl = String(url);
       return new Response(ndjson, { status: 200 });
     });
 
-    const records = await logsRetrieve<AccessRequestRecord>(
+    const records = await logsRetrieve<GatewayDNSRecord>(
       '2026-07-29T00:00:00.123Z',
       '2026-07-30T00:00:00Z',
-      'access_requests',
+      'gateway_dns',
     );
 
-    expect(records).toHaveLength(accessLogsFixture.records.length);
-    expect(records[0].IPAddress).toBe('185.220.101.45');
+    expect(records).toHaveLength(gatewayDNSLogsFixture.records.length);
+    expect(records[0].DeviceID).toBe(gatewayDNSLogsFixture.records[0].DeviceID);
     // Fractional seconds are floored to a whole-second "Z" timestamp.
     expect(capturedUrl).toContain('start=2026-07-29T00%3A00%3A00Z');
   });
