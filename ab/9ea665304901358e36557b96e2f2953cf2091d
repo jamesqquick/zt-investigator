@@ -1,0 +1,29 @@
+README.md
+  s_e3db104e5d2cda::t_c63e4fef140cb1 126,147
+package.json
+  s_f24d681f7c1925::t_b503fad39ab2a8 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ab9ea665304901358e36557b96e2f2953cf2091d",
+  "prompts": {},
+  "sessions": {
+    "s_e3db104e5d2cda": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047371d38ffem5YPhHb41IOEiu",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    },
+    "s_f24d681f7c1925": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047846328ffefCLvut5TC2EPwf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
