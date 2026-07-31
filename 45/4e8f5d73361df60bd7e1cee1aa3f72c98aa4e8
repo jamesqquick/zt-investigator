@@ -1,0 +1,19 @@
+src/channels/slack.ts
+  s_f24d681f7c1925::t_e000ffa6be7f39 1,4-7,12-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "454e8f5d73361df60bd7e1cee1aa3f72c98aa4e8",
+  "prompts": {},
+  "sessions": {
+    "s_f24d681f7c1925": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047846328ffefCLvut5TC2EPwf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
