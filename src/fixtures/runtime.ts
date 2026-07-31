@@ -66,8 +66,9 @@ const RAW_DOMAIN_INTEL: Record<string, Record<string, unknown>> = {
 // events share the raw event shape, so reuse the attributed C2 event.
 const RAW_THREAT_EVENTS = cloudforceOneFixture['malware-c2-domain.ru'].events;
 
+// access_requests is now fetched via the SDK (not the Logs Engine), so it is
+// wired into buildFixtureCloudflareClient below instead of this map.
 const LOGS_BY_DATASET: Record<LogDataset, unknown[]> = {
-  access_requests: accessLogsFixture.records,
   gateway_dns: gatewayDNSLogsFixture.records,
   gateway_http: gatewayHTTPLogsFixture.records,
 };
@@ -97,6 +98,31 @@ export function buildFixtureCloudflareClient(): Cloudflare {
       devices: {
         devices: {
           get: async () => devicePostureFixture.result,
+        },
+      },
+      access: {
+        logs: {
+          accessRequests: {
+            // Mirror the server-side filtering the real API performs so fixture
+            // mode exercises the same code path as production.
+            list: async (params: {
+              email?: string;
+              since?: string;
+              until?: string;
+            }) => {
+              const target = (params.email ?? '').toLowerCase();
+              const from = params.since ? Date.parse(params.since) : -Infinity;
+              const to = params.until ? Date.parse(params.until) : Infinity;
+              return accessLogsFixture.records.filter((r) => {
+                if (target && r.user_email?.toLowerCase() !== target) return false;
+                const ts = r.created_at ? Date.parse(r.created_at) : NaN;
+                if (!Number.isNaN(ts)) {
+                  if (ts < from || ts > to) return false;
+                }
+                return true;
+              });
+            },
+          },
         },
       },
     },
