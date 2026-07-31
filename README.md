@@ -1,7 +1,7 @@
 # zt-investigator
 
 A Zero Trust security-investigation agent for **Cloudflare One**. Mention it in
-Slack — `@zt-investigator investigate alice@corp.com` — and it pulls the user's
+Slack (`@zt-investigator investigate alice@corp.com`) and it pulls the user's
 Access, Gateway DNS/HTTP, and device signals, enriches any indicators with
 Cloudflare threat intelligence, scores the risk, and posts a CISO-ready triage
 report back to the thread.
@@ -15,9 +15,9 @@ A real Zero Trust investigation is a scavenger hunt across consoles. To answer
 "is this login suspicious?" an analyst has to pull the user's **Access**
 authentication events, cross-reference their **Gateway** DNS and HTTP activity,
 check the **device** they came from, and then paste every source IP and domain
-into a threat-intel tool — and finally hand-correlate all of it into a verdict.
+into a threat-intel tool, then hand-correlate all of it into a verdict.
 
-This agent collapses that loop into a single Slack mention. It does the pivoting
+This agent collapses that into a single Slack mention. It does the pivoting
 and correlation the way an analyst would, and returns a structured risk
 assessment in seconds instead of the manual back-and-forth across four surfaces.
 
@@ -25,18 +25,17 @@ assessment in seconds instead of the manual back-and-forth across four surfaces.
 
 One mention produces one **triage report** posted back to the Slack thread:
 
-- **Risk level** — `low` / `medium` / `high` / `critical`
-- **Summary** — one sentence: what happened and why it matters
-- **Key findings** — the 3–5 signals that drove the score
-- **Access event** — the triggering login: app, allow/deny, country + IP, time
-- **Gateway activity** — notable DNS/HTTP records in the window (blocks, DLP hits)
-- **Device posture** — the WARP device identity and OS metadata
-- **Threat-intel hits** — reputation hits and attributed-actor matches per indicator
-- **Recommended action** — one clear next step for the security team
+- **Risk level**: `low` / `medium` / `high` / `critical`
+- **Summary**: one sentence: what happened and why it matters
+- **Key findings**: the 3–5 signals that drove the score
+- **Access event**: the triggering login: app, allow/deny, country + IP, time
+- **Gateway activity**: notable DNS/HTTP records in the window (blocks, DLP hits)
+- **Device posture**: the WARP device identity and OS metadata
+- **Threat-intel hits**: reputation hits and attributed-actor matches per indicator
+- **Recommended action**: one clear next step for the security team
 
-A core trust property: **a coverage gap never scores as clean.** If any intel
-lookup errors, that indicator is reported as `lookup_failed` — surfaced to the
-analyst and never quietly used to lower the risk level.
+**Coverage gaps never score as clean.** A failed lookup surfaces as `lookup_failed`
+and never lowers the risk level.
 
 ## Architecture
 
@@ -62,7 +61,7 @@ Objects**, and **Workers AI + AI Gateway**.
 
 ## Quick start (no credentials)
 
-Fixture mode runs the full agent flow against local sample data — no Cloudflare
+Fixture mode runs the full agent flow against local sample data. No Cloudflare
 or Slack credentials needed, just an OpenAI key.
 
 ```bash
@@ -95,8 +94,7 @@ Subscriptions URL at `https://<worker>/channels/slack/events` and subscribe to
 `app_mention`.
 
 Deployed model calls route through the `zt-investigator` AI Gateway (create it
-under AI → AI Gateway). Response caching is intentionally off — investigations
-must reflect live reasoning.
+under AI → AI Gateway). Response caching is off. Investigations must use live data.
 
 ## Configuration
 
