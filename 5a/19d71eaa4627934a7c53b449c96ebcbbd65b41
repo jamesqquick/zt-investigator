@@ -1,0 +1,37 @@
+src/fixtures/access-logs.ts
+  s_e3db104e5d2cda::t_e4047b7c4cdb21 10-18,21-29,32-40
+src/fixtures/runtime.ts
+  s_e3db104e5d2cda::t_fe5bab433791f0 69-70,103-127
+src/lib/config.ts
+  s_e3db104e5d2cda::t_f14ef5331ca4a8 54-56
+src/tools/access-logs.ts
+  s_f24d681f7c1925::t_03a682f97ce978 3-4,7-9,11-19,25-27,34-52
+test/fixture-mode.test.ts
+  s_e3db104e5d2cda::t_3c73e90ebfc15e 72,79,81
+test/logs-client.test.ts
+  s_e3db104e5d2cda::t_dd27f464fa9d03 2-3,41,48,51,54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5a19d71eaa4627934a7c53b449c96ebcbbd65b41",
+  "prompts": {},
+  "sessions": {
+    "s_e3db104e5d2cda": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047371d38ffem5YPhHb41IOEiu",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    },
+    "s_f24d681f7c1925": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047846328ffefCLvut5TC2EPwf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
