@@ -123,7 +123,7 @@ are checked into the repo under [`src/fixtures/`](src/fixtures/), so
 pnpm install
 cp .env.example .env          # FIXTURE_MODE=true is the default
 # set OPENAI_API_KEY in .env (the model still runs locally)
-pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent "investigate alice@corp.com"
 ```
 
 The triage report prints to the run output.
@@ -144,7 +144,7 @@ token).
 > with Logshare read. Confirm the exact scope against your account.
 
 ```bash
-pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent "investigate alice@corp.com"
 ```
 
 ## Deploy to Cloudflare Workers
