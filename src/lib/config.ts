@@ -51,16 +51,16 @@ export function getCloudflareApiConfig(): CloudflareApiConfig {
   return { apiToken: apiToken!, accountId: accountId! };
 }
 
-export type LogDataset = 'access_requests' | 'gateway_dns' | 'gateway_http';
+// gateway_dns and gateway_http still flow through Logpush → R2.
+// access_requests is now fetched directly via the Access Logs API.
+export type LogDataset = 'gateway_dns' | 'gateway_http';
 
 const DEFAULT_PREFIXES: Record<LogDataset, string> = {
-  access_requests: 'access_requests/{DATE}',
   gateway_dns: 'gateway_dns/{DATE}',
   gateway_http: 'gateway_http/{DATE}',
 };
 
 const PREFIX_ENV: Record<LogDataset, string> = {
-  access_requests: 'CF_ACCESS_LOG_PREFIX',
   gateway_dns: 'CF_GATEWAY_DNS_PREFIX',
   gateway_http: 'CF_GATEWAY_HTTP_PREFIX',
 };

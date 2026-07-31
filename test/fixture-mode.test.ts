@@ -69,15 +69,15 @@ describe('FIXTURE_MODE (offline runtime)', () => {
     expect(out.result.name).toBe('MacBook-Pro-James');
   });
 
-  test('access logs stream canned NDJSON filtered to the user', async () => {
+  test('access logs return canned records filtered to the user via direct API', async () => {
     const out = (await getAccessLogs.run({
       data: {
         userEmail: 'james@company.com',
         fromTime: '2026-07-28T00:00:00Z',
         toTime: '2026-07-30T00:00:00Z',
       },
-    })) as { records: Array<{ IPAddress: string }> };
+    })) as { records: Array<{ ip_address: string }> };
     expect(out.records.length).toBeGreaterThan(0);
-    expect(out.records[0].IPAddress).toBe('185.220.101.45');
+    expect(out.records[0].ip_address).toBe('185.220.101.45');
   });
 });
