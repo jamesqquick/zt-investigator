@@ -1,54 +1,50 @@
 import { defineTool } from '@flue/runtime';
 import * as v from 'valibot';
-import { logsRetrieve } from '../lib/logs-client.ts';
-import { filterRecords } from './filter.ts';
+import { getCloudflareClient } from '../lib/cf-client.ts';
+import { getCloudflareApiConfig } from '../lib/config.ts';
 import { asJson } from '../lib/json.ts';
 
-// access_requests Logpush record (PascalCase). https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/account/access_requests/
+// AccessRequest record from GET /accounts/{id}/access/logs/access_requests.
+// https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/logs/subresources/access_requests/methods/list/
+// Fields are snake_case (SDK type) — no DeviceID; use Gateway logs for device linkage.
 export interface AccessRequestRecord {
-  Action: string;                       // 'login' | 'logout'
-  Allowed: boolean;
-  AppDomain: string;
-  AppUUID: string;
-  Connection: string;                   // identity provider (e.g. 'google-workspace')
-  Country: string;                      // 2-letter ISO country code
-  CreatedAt: string;
-  Email: string;
-  IPAddress: string;
-  RayID: string;
-  UserUID: string;
-  PurposeJustificationResponse?: string;
+  action?: string;           // 'login' | 'logout'
+  allowed?: boolean;
+  app_domain?: string;
+  app_uid?: string;
+  connection?: string;       // identity provider (e.g. 'google-workspace')
+  created_at?: string;
+  ip_address?: string;
+  ray_id?: string;
+  user_email?: string;
 }
 
 export const getAccessLogs = defineTool({
   name: 'get_access_logs',
   description:
-    'Fetch Cloudflare Access authentication logs for a user via Logs Engine (Logpush → R2). ' +
-    'Returns login/logout events per application: Allowed (bool), AppDomain, Country, IPAddress, CreatedAt. ' +
-    'Note: there is no DeviceID on access_requests — use Gateway logs for device linkage.',
+    'Fetch Cloudflare Access authentication logs for a user via the Access Logs API (no R2/Logpush required). ' +
+    'Returns up to 300 login/logout events: allowed, app_domain, ip_address, created_at. ' +
+    'Note: access_requests has no DeviceID — use Gateway logs for device linkage.',
   input: v.object({
     userEmail: v.pipe(v.string(), v.email(), v.description('User email address to filter on')),
     fromTime: v.pipe(v.string(), v.description('ISO 8601 window start')),
     toTime: v.pipe(v.string(), v.description('ISO 8601 window end')),
   }),
   async run({ data }) {
-    const records = await logsRetrieve<AccessRequestRecord>(
-      data.fromTime,
-      data.toTime,
-      'access_requests',
-    );
-
-    const filtered = filterRecords(records, {
+    const { accountId } = getCloudflareApiConfig();
+    const records = await getCloudflareClient().zeroTrust.access.logs.accessRequests.list({
+      account_id: accountId,
       email: data.userEmail,
-      fromTime: data.fromTime,
-      toTime: data.toTime,
-      emailKey: 'Email',
-      timeKey: 'CreatedAt',
+      emailOp: 'eq',
+      since: data.fromTime,
+      until: data.toTime,
+      limit: 300,
+      direction: 'desc',
     });
 
     return asJson({
-      records: filtered,
-      total: filtered.length,
+      records: records as AccessRequestRecord[],
+      total: records.length,
       dataset: 'access_requests',
     });
   },

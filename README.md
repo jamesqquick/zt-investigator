@@ -30,7 +30,7 @@ thread as a Block Kit card (or to the run output when running locally):
   scoring framework (see [`src/skills/triage/SKILL.md`](src/skills/triage/SKILL.md)).
 - **Summary** — one sentence: what happened and why it matters.
 - **Key findings** — the 3–5 signals that drove the score, most important first.
-- **Access event** — the triggering login: app, allow/deny, country + IP, time.
+- **Access event** — the triggering login: app, allow/deny, source IP, time.
 - **Gateway activity** — notable DNS/HTTP records in the window (blocks, DLP hits).
 - **Device posture** — the WARP device identity and OS metadata behind the session.
 - **Threat-intel hits** — reputation hits and attributed-actor matches per indicator.
@@ -48,10 +48,10 @@ platforms. Each tool maps to a real product and use case:
 | Product | Role in the investigation | Surfaced via |
 |---|---|---|
 | **Cloudflare One** | The Zero Trust / SASE platform being investigated — the umbrella over Access, Gateway, and WARP. | — |
-| **Cloudflare Access** (ZTNA) | Who authenticated to which app, allow vs. deny, origin country, source IP. | `access_requests` logs |
+| **Cloudflare Access** (ZTNA) | Who authenticated to which app, allow vs. deny, source IP. | Access Logs API (`access_requests`) |
 | **Cloudflare Gateway** (SWG) | DNS and HTTP filtering decisions, blocked categories, DLP profile matches, and device linkage. | `gateway_dns` + `gateway_http` logs |
 | **WARP / Zero Trust devices** | The enrolled device behind the session — name, type, OS version, last seen. | Zero Trust devices API |
-| **Logpush → R2 + Logs Engine** | How the three log datasets are stored and queried (R2 log retrieval). | `/logs/retrieve` over R2 |
+| **Logpush → R2 + Logs Engine** | How the two Gateway log datasets are stored and queried (R2 log retrieval). | `/logs/retrieve` over R2 |
 | **Cloudflare Intelligence / Security Center** | Baseline IOC reputation — "is this IP/domain generically bad?" (ASN, threat lists, domain categories). Always on. | `/intel/ip`, `/intel/domain` |
 | **Cloudforce One** (optional) | Attributed threat events — named actor/campaign, MITRE ATT&CK, kill-chain phase, analyst insight. | `/cloudforce-one/events` |
 | **Cloudflare Workers** | Runtime and deploy target; hosts the Slack ingress and the agent router. | `src/app.ts` |
@@ -68,7 +68,7 @@ Slack @mention
    └─ Worker (Hono) → dispatch → ZeroTrustInvestigator agent (one DO instance per thread)
         ├─ skill: triage        (process + risk-scoring framework)
         ├─ subagent: cf-data-collector
-        │     ├─ get_access_logs        (Logs Engine: access_requests)
+        │     ├─ get_access_logs        (Access Logs API: access_requests)
         │     ├─ get_gateway_dns_logs   (Logs Engine: gateway_dns)
         │     ├─ get_gateway_http_logs  (Logs Engine: gateway_http)
         │     └─ get_device_posture     (Zero Trust devices API)
@@ -123,7 +123,7 @@ are checked into the repo under [`src/fixtures/`](src/fixtures/), so
 pnpm install
 cp .env.example .env          # FIXTURE_MODE=true is the default
 # set OPENAI_API_KEY in .env (the model still runs locally)
-pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent "investigate alice@corp.com"
 ```
 
 The triage report prints to the run output.
@@ -131,20 +131,22 @@ The triage report prints to the run output.
 ## Live mode (real Cloudflare data)
 
 Live mode is the default — leave `FIXTURE_MODE` unset and provide the Cloudflare
-credentials below. The Intel, Zero Trust devices, and Cloudforce One tools then
-call the real APIs through the official [`cloudflare`](https://www.npmjs.com/package/cloudflare)
-SDK, while the Logs Engine (`/logs/retrieve`, not covered by the SDK) is queried
-directly. A single `CF_API_TOKEN` with **Account Intel Read, Zero Trust Read, and
-Logs Read + Edit** covers the baseline flow (Cloudforce One uses its own optional
-token).
+credentials below. The Access logs, Intel, Zero Trust devices, and Cloudforce One
+tools call the real APIs through the official [`cloudflare`](https://www.npmjs.com/package/cloudflare)
+SDK, while the Gateway DNS/HTTP logs — stored via Logpush → R2 and read through the
+Logs Engine (`/logs/retrieve`, not covered by the SDK) — are queried directly. A
+single `CF_API_TOKEN` with **Account Intel Read, Access: Audit Logs Read, Zero
+Trust Read, and Logs Read + Edit** covers the baseline flow (Cloudforce One uses
+its own optional token).
 
-> **Logs token scope:** the Logs Engine `/logs/retrieve` endpoint documents
+> **Logs token scope:** Access authentication logs use the **Access: Audit Logs
+> Read** permission. The Gateway Logs Engine `/logs/retrieve` endpoint documents
 > token auth as requiring **Logs Edit** (Logpull), even though retrieval is a
 > read. Grant Logs Read *and* Edit, or fall back to `X-Auth-Email` / `X-Auth-Key`
 > with Logshare read. Confirm the exact scope against your account.
 
 ```bash
-pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent "investigate alice@corp.com"
 ```
 
 ## Deploy to Cloudflare Workers
@@ -174,11 +176,11 @@ deep in an API call.
 | `FIXTURE_MODE` | – | `true` runs fully offline against local fixtures (no credentials). Set in `.env.example`; leave unset for live mode. |
 | `MODEL` | – | `provider/model`. Default `openai/gpt-4o`. |
 | `OPENAI_API_KEY` | local only | Needed when `MODEL=openai/gpt-4o`. |
-| `CF_API_TOKEN` | live | Account Intel Read, Zero Trust Read, Logs Read + Edit (see note above). |
+| `CF_API_TOKEN` | live | Account Intel Read, Access: Audit Logs Read, Zero Trust Read, Logs Read + Edit (see note above). |
 | `CF_ACCOUNT_ID` | live | Cloudflare account id. |
-| `CF_R2_ACCESS_KEY_ID` / `CF_R2_SECRET_ACCESS_KEY` | live | Logs Engine (Logpush → R2) retrieval. |
-| `CF_LOG_BUCKET` | – | R2 bucket for logs. Default `zt-investigator-logs`. |
-| `CF_ACCESS_LOG_PREFIX` / `CF_GATEWAY_DNS_PREFIX` / `CF_GATEWAY_HTTP_PREFIX` | – | Override Logpush object prefixes. |
+| `CF_R2_ACCESS_KEY_ID` / `CF_R2_SECRET_ACCESS_KEY` | live | Gateway Logs Engine (Logpush → R2) retrieval. |
+| `CF_LOG_BUCKET` | – | R2 bucket for Gateway logs. Default `zt-investigator-logs`. |
+| `CF_GATEWAY_DNS_PREFIX` / `CF_GATEWAY_HTTP_PREFIX` | – | Override Gateway Logpush object prefixes. |
 | `CLOUDFORCE_ONE_API_TOKEN` | optional | Enables Cloudforce One attributed events. Needs Cloudforce One Read. |
 | `CF_CLOUDFORCE_ONE_DATASET` | – | Event dataset(s) to query. Default `all`. |
 | `SLACK_SIGNING_SECRET` | Slack | Webhook verification. **Unset ⇒ verification fails closed.** |
