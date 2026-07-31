@@ -51,8 +51,6 @@ export function getCloudflareApiConfig(): CloudflareApiConfig {
   return { apiToken: apiToken!, accountId: accountId! };
 }
 
-// gateway_dns and gateway_http still flow through Logpush → R2.
-// access_requests is now fetched directly via the Access Logs API.
 export type LogDataset = 'gateway_dns' | 'gateway_http';
 
 const DEFAULT_PREFIXES: Record<LogDataset, string> = {
