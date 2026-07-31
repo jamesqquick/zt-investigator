@@ -1,0 +1,27 @@
+src/fixtures/access-logs.ts
+  s_e3db104e5d2cda::t_35d59a727efb6e 10-18,21-29,32-40
+src/fixtures/runtime.ts
+  s_e3db104e5d2cda::t_e7bc4375363d22 69-70,103-127
+src/lib/config.ts
+  s_e3db104e5d2cda::t_a3b5ce3f5ccbd9 54-56
+test/fixture-mode.test.ts
+  s_e3db104e5d2cda::t_c424e7e0b6b06b 72,79,81
+test/logs-client.test.ts
+  s_e3db104e5d2cda::t_6e2b5e635449c6 2-3,41,48,51,54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "80e78f8d061b17058e00d1fc33f9d8f23ba93bcc",
+  "prompts": {},
+  "sessions": {
+    "s_e3db104e5d2cda": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047371d38ffem5YPhHb41IOEiu",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
