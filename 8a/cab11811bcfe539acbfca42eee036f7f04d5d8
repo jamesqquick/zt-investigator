@@ -1,0 +1,35 @@
+README.md
+  s_c81539575233ce::t_18bc8ba54e4688 4,126,149
+src/fixtures/access-logs.ts
+  s_c81539575233ce::t_1b800f5a957064 16,27,38
+src/fixtures/device-posture.ts
+  s_c81539575233ce::t_eb330bbf5807b5 21
+src/fixtures/gateway-logs.ts
+  s_c81539575233ce::t_7c7589490ba12d 16,31,61
+src/observability.ts
+  s_c81539575233ce::t_a66efee1b3bc38 20
+test/filter.test.ts
+  s_c81539575233ce::t_5ba574718f02f7 11-16,20
+test/fixture-mode.test.ts
+  s_c81539575233ce::t_bac04423a6d5c0 75
+test/observability.test.ts
+  s_c81539575233ce::t_a8c3c078686967 6-7
+test/slack-report.test.ts
+  s_c81539575233ce::t_518c7ec14372d3 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8acab11811bcfe539acbfca42eee036f7f04d5d8",
+  "prompts": {},
+  "sessions": {
+    "s_c81539575233ce": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_037e78481ffeI5T6VHr0t7bi0J",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
