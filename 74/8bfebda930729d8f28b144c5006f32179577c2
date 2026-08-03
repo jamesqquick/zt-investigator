@@ -1,0 +1,33 @@
+package.json
+  s_c81539575233ce::t_6ccb78077629d5 19,24-27
+pnpm-lock.yaml
+  s_c81539575233ce::t_51cd72254a5387 15-16,18-19,21-22,24-25,340-341,349-353,522-523,527-528,531-532,535,537-538,1366-1369,2049-2051,2673,2675-2676,2678,2709-2729,2829,2831-2832,2862,2864-2865,2867,2882,2884,2886,2888,2890,3552-3553,4267-4268
+src/tools/access-logs.ts
+  s_c81539575233ce::t_1b16fc73a25fcc 45-51
+src/tools/cloudforce-one.ts
+  s_c81539575233ce::t_a51d0123b1abff 102,136
+src/tools/device-posture.ts
+  s_c81539575233ce::t_8bc351d524d62a 55-60
+src/tools/gateway-logs.ts
+  s_c81539575233ce::t_1128a604f32620 73-79,105-111
+src/tools/intel.ts
+  s_c81539575233ce::t_29355ec65e7696 207
+src/tools/slack-report.ts
+  s_c81539575233ce::t_8088ddfca7ba01 135,143-150,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "748bfebda930729d8f28b144c5006f32179577c2",
+  "prompts": {},
+  "sessions": {
+    "s_c81539575233ce": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_037e78481ffeI5T6VHr0t7bi0J",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
