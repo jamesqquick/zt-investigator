@@ -65,7 +65,7 @@ describe('FIXTURE_MODE (offline runtime)', () => {
       data: { deviceId: 'device-abc-123' },
     })) as { output: { success: boolean; result: { name: string; os_version?: string } } };
     expect(out.success).toBe(true);
-    expect(out.result.name).toBe('MacBook-Pro-James');
+    expect(out.result.name).toBe('MacBook-Pro-Employee');
   });
 
   test('access logs return canned records filtered to the user via direct API', async () => {

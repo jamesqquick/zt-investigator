@@ -5,7 +5,7 @@ import type { PhysicalDevice } from '../tools/device-posture.ts';
 export const devicePostureFixture: { result: PhysicalDevice; success: boolean } = {
   result: {
     id: 'device-abc-123',
-    name: 'MacBook-Pro-James',
+    name: 'MacBook-Pro-Employee',
     active_registrations: 1,
     created_at: '2026-01-15T09:00:00Z',
     last_seen_at: '2026-07-29T02:47:30Z',
@@ -17,9 +17,9 @@ export const devicePostureFixture: { result: PhysicalDevice; success: boolean } 
     os_version: '15.3.1',
     serial_number: 'C02ABC123DEF',
     last_seen_user: {
-      id: 'uid-james-001',
+      id: 'uid-employee-001',
       email: 'employee@company.com',
-      name: 'James Quick',
+      name: 'Employee',
     },
   },
   success: true,
