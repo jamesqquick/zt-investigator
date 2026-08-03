@@ -16,15 +16,15 @@
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "engines": {
-    "node": ">=22",
+    "node": ">=22.19.0",
     "pnpm": ">=11"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "0.81.1",
-    "@flue/cli": "2.0.0-nightly.202607240825",
-    "@flue/runtime": "2.0.0-nightly.202607240825",
-    "@flue/slack": "2.0.0-nightly.202607240825",
-    "@flue/vite": "2.0.0-nightly.202607240825",
+    "@flue/cli": "^2.0.1",
+    "@flue/runtime": "^2.0.1",
+    "@flue/slack": "^2.0.1",
+    "@flue/vite": "^2.0.1",
     "agents": "0.20.1",
     "cloudflare": "^7.0.0",
     "hono": "4.12.32",

@@ -79,9 +79,8 @@ describe('createTriageReportTool delivery', () => {
 
   test('no Slack thread -> delivered to run output', async () => {
     const tool = createTriageReportTool();
-    const result = (await tool.run(runCtx(report))) as {
-      delivered: string;
-      riskLevel: string;
+    const { output: result } = (await tool.run(runCtx(report))) as {
+      output: { delivered: string; riskLevel: string };
     };
     expect(result.delivered).toBe('run-output');
     expect(result.riskLevel).toBe('critical');
@@ -89,9 +88,8 @@ describe('createTriageReportTool delivery', () => {
 
   test('Slack thread but no bot token -> delivered:"failed" (never a false success)', async () => {
     const tool = createTriageReportTool({ channelId: 'C123', threadTs: '111.222' } as never);
-    const result = (await tool.run(runCtx(report))) as {
-      delivered: string;
-      error?: string;
+    const { output: result } = (await tool.run(runCtx(report))) as {
+      output: { delivered: string; error?: string };
     };
     expect(result.delivered).toBe('failed');
     expect(result.error).toMatch(/SLACK_BOT_TOKEN/);

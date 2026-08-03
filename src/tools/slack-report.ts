@@ -132,7 +132,7 @@ export function createTriageReportTool(dest?: SlackThreadRef) {
       if (dest) {
         const result = await step.do('post-to-slack', () => postToSlack(dest, data));
         if (result.ok) {
-          return asJson({ delivered: 'slack', riskLevel: data.riskLevel });
+          return { output: asJson({ delivered: 'slack', riskLevel: data.riskLevel }) };
         }
         // Surface the failure; the full report rides back on the result so it
         // is not lost when Slack delivery fails.
@@ -140,18 +140,20 @@ export function createTriageReportTool(dest?: SlackThreadRef) {
           error: result.error,
           riskLevel: data.riskLevel,
         });
-        return asJson({
-          delivered: 'failed',
-          riskLevel: data.riskLevel,
-          error: result.error,
-          report: formatReport(data),
-        });
+        return {
+          output: asJson({
+            delivered: 'failed',
+            riskLevel: data.riskLevel,
+            error: result.error,
+            report: formatReport(data),
+          }),
+        };
       }
 
       log.info('No Slack thread bound; triage report delivered to run output', {
         riskLevel: data.riskLevel,
       });
-      return asJson({ delivered: 'run-output', riskLevel: data.riskLevel, report: formatReport(data) });
+      return { output: asJson({ delivered: 'run-output', riskLevel: data.riskLevel, report: formatReport(data) }) };
     },
   });
 }

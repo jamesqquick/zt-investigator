@@ -47,7 +47,7 @@ export const getAccessLogs = defineTool({
     //        direction: 'desc',
     //      });
     // 3. Return:
-    //      return asJson({ records: records as AccessRequestRecord[], total: records.length, dataset: 'access_requests' })
+    //      return { output: asJson({ records: records as AccessRequestRecord[], total: records.length, dataset: 'access_requests' }) }
     //
     // The building blocks (getCloudflareClient, getCloudflareApiConfig, asJson) are imported above.
     void data;

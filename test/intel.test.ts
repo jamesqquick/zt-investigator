@@ -72,10 +72,14 @@ describe('classify', () => {
   });
 });
 
-// run() returns a JsonValue; cast back to the known shape for assertions.
+// run() returns a { output } envelope; unwrap and cast for assertions.
 type IntelResult = Record<string, IntelEntry>;
-const runIntel = (indicators: string[]) =>
-  getIndicatorIntel.run({ data: { indicators } } as never) as Promise<IntelResult>;
+const runIntel = async (indicators: string[]) =>
+  (
+    (await getIndicatorIntel.run({ data: { indicators } } as never)) as {
+      output: IntelResult;
+    }
+  ).output;
 
 describe('get_indicator_intel (injected client)', () => {
   const savedEnv: Record<string, string | undefined> = {};

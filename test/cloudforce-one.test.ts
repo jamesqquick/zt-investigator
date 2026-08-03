@@ -11,8 +11,12 @@ type CloudforceOneResult =
   | { available: false; reason: string }
   | { available: true; results: Record<string, CloudforceOneEntry> };
 
-const runCF1 = (indicators: string[]) =>
-  getCloudforceOneEvents.run({ data: { indicators } } as never) as Promise<CloudforceOneResult>;
+const runCF1 = async (indicators: string[]) =>
+  (
+    (await getCloudforceOneEvents.run({ data: { indicators } } as never)) as {
+      output: CloudforceOneResult;
+    }
+  ).output;
 
 // RAW threat_events list response — a bare array, as the SDK returns. Only the
 // C2 domain has an attributed event; other indicators → no_match.
