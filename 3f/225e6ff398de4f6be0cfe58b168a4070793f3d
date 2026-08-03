@@ -1,0 +1,41 @@
+package.json
+  s_c81539575233ce::t_ebed22159b11b8 19,24-27
+pnpm-lock.yaml
+  s_c81539575233ce::t_ada0b5cf7c36cd 15-16,18-19,21-22,24-25,340-341,349-353,522-523,527-528,531-532,535,537-538,1366-1369,2049-2051,2673,2675-2676,2678,2709-2729,2829,2831-2832,2862,2864-2865,2867,2882,2884,2886,2888,2890,3552-3553,4267-4268
+src/tools/access-logs.ts
+  s_c81539575233ce::t_f50b8a771c0ce8 50
+src/tools/cloudforce-one.ts
+  s_c81539575233ce::t_efca2433770ad7 102,136
+src/tools/device-posture.ts
+  s_c81539575233ce::t_fefbe976966c1f 55-60
+src/tools/gateway-logs.ts
+  s_c81539575233ce::t_ee0a6afefcd0cd 73-79,105-111
+src/tools/intel.ts
+  s_c81539575233ce::t_099fc011bc317d 207
+src/tools/slack-report.ts
+  s_c81539575233ce::t_ae645c90213767 135,143-150,156
+test/cloudforce-one.test.ts
+  s_c81539575233ce::t_d517bccf779fba 14-19
+test/fixture-mode.test.ts
+  s_c81539575233ce::t_a9929d26cc873b 40,42,52,54,64-66,72,78
+test/intel.test.ts
+  s_c81539575233ce::t_e02e1dd1b9a9df 75,77-82
+test/slack-report.test.ts
+  s_c81539575233ce::t_30bb3bc8bebf6c 82-83,91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3f225e6ff398de4f6be0cfe58b168a4070793f3d",
+  "prompts": {},
+  "sessions": {
+    "s_c81539575233ce": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_037e78481ffeI5T6VHr0t7bi0J",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
