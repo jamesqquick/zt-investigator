@@ -1,0 +1,35 @@
+README.md
+  s_c81539575233ce::t_367044b7922707 4,71,83
+src/fixtures/access-logs.ts
+  s_c81539575233ce::t_dec33898100127 16,27,38
+src/fixtures/device-posture.ts
+  s_c81539575233ce::t_62dd27136aaef8 21
+src/fixtures/gateway-logs.ts
+  s_c81539575233ce::t_4318576af29155 16,31,61
+src/observability.ts
+  s_c81539575233ce::t_10dc2006f8dade 20
+test/filter.test.ts
+  s_c81539575233ce::t_66d1ede2fcbae1 11-16,20
+test/fixture-mode.test.ts
+  s_c81539575233ce::t_132de500e4ecf8 75
+test/observability.test.ts
+  s_c81539575233ce::t_866dfdcf52ea4e 6-7
+test/slack-report.test.ts
+  s_c81539575233ce::t_657fd9508c640e 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6e8be2c2978f58277143b327a4ba5e9bfacc3c79",
+  "prompts": {},
+  "sessions": {
+    "s_c81539575233ce": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_037e78481ffeI5T6VHr0t7bi0J",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
