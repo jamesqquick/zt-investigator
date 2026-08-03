@@ -1,0 +1,23 @@
+src/fixtures/device-posture.ts
+  s_c81539575233ce::t_a60532905190ca 8,20,22
+src/fixtures/gateway-logs.ts
+  s_c81539575233ce::t_7691e1858bf069 15,30,59
+test/fixture-mode.test.ts
+  s_c81539575233ce::t_2656f304bcee96 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "073faae579e50ad3815c570f04d07172fc6facb1",
+  "prompts": {},
+  "sessions": {
+    "s_c81539575233ce": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_037e78481ffeI5T6VHr0t7bi0J",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "James Quick <jquick@cloudflare.com>"
+    }
+  }
+}
