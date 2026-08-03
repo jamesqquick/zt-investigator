@@ -8,16 +8,16 @@ interface Row {
 }
 
 const rows: Row[] = [
-  { Email: 'alice@corp.com', CreatedAt: '2026-07-20T10:00:00Z', note: 'in-window' },
-  { Email: 'ALICE@corp.com', CreatedAt: '2026-07-20T11:00:00Z', note: 'case-insensitive' },
-  { Email: 'alice@corp.com', CreatedAt: '2026-07-19T10:00:00Z', note: 'before-window' },
-  { Email: 'alice@corp.com', CreatedAt: '2026-07-21T10:00:00Z', note: 'after-window' },
-  { Email: 'bob@corp.com', CreatedAt: '2026-07-20T10:30:00Z', note: 'other-user' },
-  { Email: 'alice@corp.com', CreatedAt: 'not-a-date', note: 'unparseable-ts' },
+  { Email: 'employee@company.com', CreatedAt: '2026-07-20T10:00:00Z', note: 'in-window' },
+  { Email: 'EMPLOYEE@company.com', CreatedAt: '2026-07-20T11:00:00Z', note: 'case-insensitive' },
+  { Email: 'employee@company.com', CreatedAt: '2026-07-19T10:00:00Z', note: 'before-window' },
+  { Email: 'employee@company.com', CreatedAt: '2026-07-21T10:00:00Z', note: 'after-window' },
+  { Email: 'other@company.com', CreatedAt: '2026-07-20T10:30:00Z', note: 'other-user' },
+  { Email: 'employee@company.com', CreatedAt: 'not-a-date', note: 'unparseable-ts' },
 ];
 
 const opts = {
-  email: 'alice@corp.com',
+  email: 'employee@company.com',
   fromTime: '2026-07-20T00:00:00Z',
   toTime: '2026-07-20T23:59:59Z',
   emailKey: 'Email' as const,

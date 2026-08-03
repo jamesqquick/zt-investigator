@@ -9,7 +9,7 @@ const report = {
   riskLevel: 'critical' as const,
   summary: 'Attributed C2 beacon from a corporate device',
   keyFindings: ['Salt Typhoon C2 match', 'Login from new country'],
-  accessEvent: 'alice@corp.com allowed to app.corp.com from RU',
+  accessEvent: 'employee@company.com allowed to app.company.com from RU',
   gatewayActivity: 'DNS query to malware-c2-domain.ru blocked',
   postureStatus: 'MacBook, macOS 14.5, last seen 2h ago',
   threatIntelHits: ['malware-c2-domain.ru — Salt Typhoon (C2)'],

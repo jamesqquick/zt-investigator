@@ -18,7 +18,7 @@ export const devicePostureFixture: { result: PhysicalDevice; success: boolean } 
     serial_number: 'C02ABC123DEF',
     last_seen_user: {
       id: 'uid-james-001',
-      email: 'james@company.com',
+      email: 'employee@company.com',
       name: 'James Quick',
     },
   },
