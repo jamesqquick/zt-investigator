@@ -3,8 +3,8 @@ import { redact } from '../src/observability.ts';
 
 describe('redact', () => {
   test('masks email local part, keeps domain', () => {
-    expect(redact('user alice@corp.com logged in')).toContain('a***@corp.com');
-    expect(redact('alice@corp.com')).not.toContain('alice@corp.com');
+    expect(redact('user employee@company.com logged in')).toContain('e***@company.com');
+    expect(redact('employee@company.com')).not.toContain('employee@company.com');
   });
 
   test('masks IPv4 host bits, keeps network hint', () => {

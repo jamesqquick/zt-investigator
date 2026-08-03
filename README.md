@@ -1,7 +1,7 @@
 # zt-investigator
 
 A Zero Trust security-investigation agent for **Cloudflare One**. Mention it in
-Slack (`@zt-investigator investigate alice@corp.com`) and it pulls the user's
+Slack (`@zt-investigator investigate employee@company.com`) and it pulls the user's
 Access, Gateway DNS/HTTP, and device signals, enriches any indicators with
 Cloudflare threat intelligence, scores the risk, and posts a CISO-ready triage
 report back to the thread.
@@ -68,7 +68,7 @@ or Slack credentials needed, just an OpenAI key.
 pnpm install
 cp .env.example .env          # FIXTURE_MODE=true is the default
 # set OPENAI_API_KEY in .env
-pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent -- "investigate employee@company.com"
 ```
 
 The triage report prints to the run output.
@@ -80,7 +80,7 @@ Leave `FIXTURE_MODE` unset and provide real Cloudflare credentials. A single
 covers the baseline flow.
 
 ```bash
-pnpm run agent -- "investigate alice@corp.com"
+pnpm run agent -- "investigate employee@company.com"
 ```
 
 ## Deploy to Cloudflare Workers

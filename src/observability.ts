@@ -17,7 +17,7 @@ function truncate(text: string, max = 120): string {
 export function redact(text: string): string {
   return (
     text
-      // email -> j***@corp.com (keep first char of local part + full domain)
+      // email -> e***@company.com (keep first char of local part + full domain)
       .replace(/\b([A-Za-z0-9])[A-Za-z0-9._%+-]*(@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g, '$1***$2')
       // UUID / WARP device id -> keep first 8 chars
       .replace(/\b([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '$1…')

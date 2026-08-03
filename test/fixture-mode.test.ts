@@ -72,7 +72,7 @@ describe('FIXTURE_MODE (offline runtime)', () => {
   test('access logs return canned records filtered to the user via direct API', async () => {
     const out = (await getAccessLogs.run({
       data: {
-        userEmail: 'james@company.com',
+        userEmail: 'employee@company.com',
         fromTime: '2026-07-28T00:00:00Z',
         toTime: '2026-07-30T00:00:00Z',
       },
