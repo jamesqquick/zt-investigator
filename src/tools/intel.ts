@@ -204,6 +204,6 @@ export const getIndicatorIntel = defineTool({
     const entries = await Promise.all(data.indicators.map(enrichOne));
     const results: Record<string, IntelEntry> = {};
     for (const entry of entries) results[entry.indicator] = entry;
-    return asJson(results);
+    return { output: asJson(results) };
   },
 });

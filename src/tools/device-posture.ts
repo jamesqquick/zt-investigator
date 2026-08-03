@@ -52,9 +52,11 @@ export const getDevicePosture = defineTool({
       account_id: accountId,
     })) as PhysicalDevice;
 
-    return asJson({
-      result: device,
-      success: true,
-    });
+    return {
+      output: asJson({
+        result: device,
+        success: true,
+      }),
+    };
   },
 });

@@ -37,9 +37,9 @@ afterAll(() => {
 
 describe('FIXTURE_MODE (offline runtime)', () => {
   test('intel enriches canned indicators through the real SDK mapping', async () => {
-    const out = (await getIndicatorIntel.run({
+    const { output: out } = (await getIndicatorIntel.run({
       data: { indicators: ['185.220.101.45', 'malware-c2-domain.ru', 'pastebin.com'] },
-    })) as Record<string, IntelEntry>;
+    })) as { output: Record<string, IntelEntry> };
 
     expect(out['185.220.101.45'].status).toBe('enriched');
     expect(out['185.220.101.45'].is_threat).toBe(true);
@@ -49,9 +49,9 @@ describe('FIXTURE_MODE (offline runtime)', () => {
   });
 
   test('cloudforce one is enabled and matches the attributed C2 event', async () => {
-    const out = (await getCloudforceOneEvents.run({
+    const { output: out } = (await getCloudforceOneEvents.run({
       data: { indicators: ['malware-c2-domain.ru', '185.220.101.45'] },
-    })) as CloudforceOneResult;
+    })) as { output: CloudforceOneResult };
 
     expect(out.available).toBe(true);
     if (!out.available) throw new Error('expected available');
@@ -61,22 +61,21 @@ describe('FIXTURE_MODE (offline runtime)', () => {
   });
 
   test('device posture returns the canned WARP device', async () => {
-    const out = (await getDevicePosture.run({ data: { deviceId: 'device-abc-123' } })) as {
-      success: boolean;
-      result: { name: string; os_version?: string };
-    };
+    const { output: out } = (await getDevicePosture.run({
+      data: { deviceId: 'device-abc-123' },
+    })) as { output: { success: boolean; result: { name: string; os_version?: string } } };
     expect(out.success).toBe(true);
     expect(out.result.name).toBe('MacBook-Pro-James');
   });
 
   test('access logs return canned records filtered to the user via direct API', async () => {
-    const out = (await getAccessLogs.run({
+    const { output: out } = (await getAccessLogs.run({
       data: {
         userEmail: 'employee@company.com',
         fromTime: '2026-07-28T00:00:00Z',
         toTime: '2026-07-30T00:00:00Z',
       },
-    })) as { records: Array<{ ip_address: string }> };
+    })) as { output: { records: Array<{ ip_address: string }> } };
     expect(out.records.length).toBeGreaterThan(0);
     expect(out.records[0].ip_address).toBe('185.220.101.45');
   });

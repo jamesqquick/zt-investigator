@@ -42,10 +42,12 @@ export const getAccessLogs = defineTool({
       direction: 'desc',
     });
 
-    return asJson({
-      records: records as AccessRequestRecord[],
-      total: records.length,
-      dataset: 'access_requests',
-    });
+    return {
+      output: asJson({
+        records: records as AccessRequestRecord[],
+        total: records.length,
+        dataset: 'access_requests',
+      }),
+    };
   },
 });

@@ -99,7 +99,7 @@ export const getCloudforceOneEvents = defineTool({
   async run({ data }) {
     const config = getCloudforceOneConfig();
     if (!config) {
-      return asJson({ available: false, reason: 'CLOUDFORCE_ONE_API_TOKEN not set' } satisfies CloudforceOneResult);
+      return { output: asJson({ available: false, reason: 'CLOUDFORCE_ONE_API_TOKEN not set' } satisfies CloudforceOneResult) };
     }
 
     const results: Record<string, CloudforceOneEntry> = {};
@@ -133,6 +133,6 @@ export const getCloudforceOneEvents = defineTool({
       }
     }
 
-    return asJson({ available: true, results } satisfies CloudforceOneResult);
+    return { output: asJson({ available: true, results } satisfies CloudforceOneResult) };
   },
 });

@@ -70,11 +70,13 @@ export const getGatewayDNSLogs = defineTool({
       timeKey: 'Datetime',
     });
 
-    return asJson({
-      records: filtered,
-      total: filtered.length,
-      dataset: 'gateway_dns',
-    });
+    return {
+      output: asJson({
+        records: filtered,
+        total: filtered.length,
+        dataset: 'gateway_dns',
+      }),
+    };
   },
 });
 
@@ -100,10 +102,12 @@ export const getGatewayHTTPLogs = defineTool({
       timeKey: 'Datetime',
     });
 
-    return asJson({
-      records: filtered,
-      total: filtered.length,
-      dataset: 'gateway_http',
-    });
+    return {
+      output: asJson({
+        records: filtered,
+        total: filtered.length,
+        dataset: 'gateway_http',
+      }),
+    };
   },
 });
